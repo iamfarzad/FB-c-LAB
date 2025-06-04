@@ -126,6 +126,11 @@ const makeProxyRequest = async (endpoint: string, data: any): Promise<ProxyRespo
     });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        // Rate limited
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Rate limit exceeded. ${errorData.error || 'Please try again later.'}`);
+      }
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Mic, MicOff, Volume2 } from 'lucide-react';
 import { Theme } from '../../../types';
 import { GdmLiveAudio } from './GdmLiveAudio';
@@ -142,7 +142,7 @@ export const FullScreenVoiceOverlay: React.FC<FullScreenVoiceOverlayProps> = ({
     }
   }, [gdmAudioRef]);
 
-  const handleToggleRecording = () => {
+  const handleToggleRecording = useCallback(() => {
     if (!gdmAudioRef.current) return;
 
     if (isRecording) {
@@ -150,40 +150,42 @@ export const FullScreenVoiceOverlay: React.FC<FullScreenVoiceOverlayProps> = ({
     } else {
       gdmAudioRef.current.startRecording();
     }
-  };
+  }, [isRecording, gdmAudioRef]);
 
-  const handleClearTranscripts = () => {
+  const handleClearTranscripts = useCallback(() => {
     setInterimTranscript('');
     setFinalTranscript('');
     setAiResponse('');
     setElapsedTime('00:00');
-  };
+  }, []);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (isRecording && gdmAudioRef.current) {
       gdmAudioRef.current.stopRecording();
     }
     handleClearTranscripts();
     onClose();
-  };
+  }, [isRecording, gdmAudioRef, handleClearTranscripts, onClose]);
 
-  // Handle escape key
+  // Handle keyboard events
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isActive) {
+      if (!isActive) return;
+      
+      if (event.key === 'Escape') {
+        event.preventDefault();
         handleClose();
       }
-      if (event.code === 'Space' && isActive) {
+      
+      if (event.code === 'Space') {
         event.preventDefault();
         handleToggleRecording();
       }
     };
 
-    if (isActive) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [isActive, isRecording]);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isActive, isRecording, handleClose, handleToggleRecording]);
 
   // Lock body scroll when active
   useEffect(() => {

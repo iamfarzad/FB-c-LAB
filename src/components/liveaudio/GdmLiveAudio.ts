@@ -1,6 +1,7 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import * as geminiService from '../../../services/geminiService';
+import { streamAudio } from '../../../services/geminiService';
 
 interface AudioStreamResponse {
   text: string;
@@ -47,6 +48,9 @@ export class GdmLiveAudio extends LitElement {
   @state() status = 'Ready';
   @state() error = '';
   @state() lastUserInterimTranscript = '';
+
+  private speechRecognition: any | null = null;
+  private speechUtterance: SpeechSynthesisUtterance | null = null;
 
   constructor() {
     super();
@@ -96,80 +100,11 @@ export class GdmLiveAudio extends LitElement {
   }
 
   private handleAudioProcess(e: AudioProcessingEvent): void {
-    if (!this.isRecording || !this.mediaStream) return;
-    
-    try {
-      const inputData = e.inputBuffer.getChannelData(0);
-      this.audioChunks.push(new Float32Array(inputData));
-      
-      // Process audio chunks if we have enough data
-      if (this.audioChunks.length > 5) {
-        this.processAudioChunk().catch(error => {
-          console.error('Error processing audio chunk:', error);
-          this.updateError('Error processing audio');
-        });
-      }
-    } catch (error) {
-      console.error('Error in audio processing:', error);
-      this.updateError('Audio processing error');
-    }
+    // Legacy method - no longer used with browser STT/TTS (Option B)
+    // Audio processing now handled by browser SpeechRecognition API
   }
 
-  private async processAudioChunk(): Promise<void> {
-    if (this.audioChunks.length === 0 || this.isProcessing || !this.mediaStream) return;
-    
-    this.isProcessing = true;
-    const chunksToProcess = [...this.audioChunks];
-    this.audioChunks = [];
-    
-    try {
-      // Combine all chunks into a single Float32Array
-      const totalLength = chunksToProcess.reduce((sum, chunk) => sum + chunk.length, 0);
-      const combined = new Float32Array(totalLength);
-      let offset = 0;
-      for (const chunk of chunksToProcess) {
-        combined.set(chunk, offset);
-        offset += chunk.length;
-      }
-      
-      // Reset auto-stop timeout
-      this.resetAutoStopTimer();
-      
-      // Convert to WAV and process
-      const wavBlob = this.float32ToWav(combined, this.SAMPLE_RATE_IN);
-      const stream = await geminiService.streamAudio(wavBlob, {
-        model: this.modelName,
-        systemInstruction: this.systemInstruction
-      });
-      
-      this.streamReader = stream.getReader();
-      
-      while (this.isRecording) {
-        const { done, value } = await this.streamReader.read();
-        if (done) break;
-        
-        if (value?.text) {
-          this.dispatchEvent(new CustomEvent('transcription', { 
-            detail: { 
-              text: value.text,
-              isFinal: value.isFinal ?? false
-            },
-            bubbles: true,
-            composed: true
-          }));
-          
-          if (value.isFinal) {
-            this.lastUserInterimTranscript = value.text;
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error processing audio:', error);
-      this.updateError('Failed to process audio. Please try again.');
-    } finally {
-      this.isProcessing = false;
-    }
-  }
+  // Removed old audio processing - now using browser STT/TTS (Option B)
 
   private resetAutoStopTimer(): void {
     if (this.autoStopTimeout) {
@@ -226,137 +161,169 @@ export class GdmLiveAudio extends LitElement {
   }
 
   public async startRecording(): Promise<void> {
-    if (this.isRecording || !this.inputAudioContext) return;
-    
-    this.updateStatus('Starting...');
-    
-    // Reset any previous state
-    this.cleanup();
-    
+    if (this.isRecording) return;
+
     try {
-      // Request microphone access
-      this.updateStatus('Requesting microphone access...');
-      this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: this.SAMPLE_RATE_IN
-        },
-        video: false
-      });
-      
-      if (!this.audioProcessor) {
-        throw new Error('Audio processor not initialized');
-      }
-      
-      // Set up audio processing
-      const source = this.inputAudioContext.createMediaStreamSource(this.mediaStream);
-      
-      // Connect nodes
-      source.connect(this.audioProcessor);
-      this.audioProcessor.connect(this.inputAudioContext.destination);
-      
+      this.updateStatus('Starting speech recognition...');
       this.isRecording = true;
-      this.resetAutoStopTimer();
-      this.updateStatus('Listening...');
-      this.dispatchEvent(new CustomEvent('recording-started', { bubbles: true, composed: true }));
+      this.requestUpdate('isRecording');
+
+      // Initialize browser-based Speech Recognition (Option B from serverless proxy plan)
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       
+      if (!SpeechRecognition) {
+        throw new Error('Speech recognition not supported in this browser');
+      }
+
+      this.speechRecognition = new SpeechRecognition();
+      this.speechRecognition.continuous = true;
+      this.speechRecognition.interimResults = true;
+      this.speechRecognition.lang = 'en-US';
+
+      this.speechRecognition.onresult = (event: any) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        if (interimTranscript) {
+          this.lastUserInterimTranscript = interimTranscript;
+          this.dispatchEvent(new CustomEvent('user-speech-interim', { detail: { text: interimTranscript } }));
+        }
+
+        if (finalTranscript) {
+          console.log('[GdmLiveAudio] Final user speech:', finalTranscript);
+          this.dispatchEvent(new CustomEvent('user-speech-final', { detail: { text: finalTranscript } }));
+          this.lastUserInterimTranscript = "";
+          this.processUserSpeech(finalTranscript); // Send to proxy!
+        }
+      };
+
+      this.speechRecognition.onerror = (event: any) => {
+        console.error('[GdmLiveAudio] Speech Recognition Error:', event.error);
+        this.updateError(`Speech recognition error: ${event.error}`);
+        this.stopRecording();
+      };
+
+      this.speechRecognition.onend = () => {
+        console.log('[GdmLiveAudio] Speech Recognition Ended.');
+        if (this.isRecording) {
+          // Restart if still intended to be recording
+          this.speechRecognition?.start();
+        }
+      };
+
+      this.speechRecognition.start();
+      this.updateStatus('Listening for speech...');
+      this.dispatchEvent(new CustomEvent('recording-state-changed', { detail: { isRecording: true } }));
+
     } catch (error) {
-      console.error('Error starting recording:', error);
-      this.updateError('Failed to access microphone. Please check permissions.');
-      this.cleanup();
-      throw error;
+      console.error('[GdmLiveAudio] Error starting Speech Recognition:', error);
+      this.updateError(`Failed to start speech recognition: ${error instanceof Error ? error.message : String(error)}`);
+      this.stopRecording();
     }
   }
 
   public async stopRecording(): Promise<void> {
     if (!this.isRecording) return;
-    
+
     this.isRecording = false;
-    this.updateStatus('Processing...');
-    
+    this.requestUpdate('isRecording');
+
+    if (this.speechRecognition) {
+      this.speechRecognition.stop();
+      this.speechRecognition = null;
+    }
+
+    this.dispatchEvent(new CustomEvent('recording-state-changed', { detail: { isRecording: false } }));
+    this.updateStatus('Recording stopped. Ready to listen.');
+  }
+
+  private async processUserSpeech(text: string) {
+    this.updateStatus('Processing user speech...');
     try {
-      // Stop all tracks in the media stream
-      if (this.mediaStream) {
-        this.mediaStream.getTracks().forEach(track => track.stop());
+      // Use proxy for text processing (Option B from serverless proxy plan)
+      const response = await fetch('/api/gemini-proxy/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: text,
+          model: this.modelName,
+          systemInstruction: this.systemInstruction,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      const result = await response.json();
       
-      // Clean up stream reader
-      if (this.streamReader) {
-        try {
-          await this.streamReader.cancel();
-        } catch (error) {
-          console.error('Error canceling stream reader:', error);
-        }
-        this.streamReader = null;
+      if (result.success && result.data?.text) {
+        console.log('[GdmLiveAudio] AI Text Response from Proxy:', result.data.text);
+        this.dispatchEvent(new CustomEvent('ai-speech-text', { detail: { text: result.data.text } }));
+        this.speakAiResponse(result.data.text); // Use browser TTS
+      } else {
+        console.warn('[GdmLiveAudio] No text response from AI via proxy.');
+        this.updateError('No response from AI');
       }
-      
-      // Disconnect audio nodes
-      if (this.audioProcessor) {
-        this.audioProcessor.disconnect();
-        this.audioProcessor = null;
-      }
-      
-      // Clear any pending timeouts
-      if (this.autoStopTimeout) {
-        window.clearTimeout(this.autoStopTimeout);
-        this.autoStopTimeout = null;
-      }
-      
-      this.dispatchEvent(new CustomEvent('recording-stopped', { bubbles: true, composed: true }));
-      this.updateStatus('Ready');
-      
     } catch (error) {
-      console.error('Error stopping recording:', error);
-      this.updateError('Error stopping recording');
-      throw error;
+      console.error('[GdmLiveAudio] Error processing user speech via proxy:', error);
+      this.updateError(`AI response error: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
-  private cleanup(): void {
-    // Clear any pending timeouts
-    if (this.autoStopTimeout) {
-      window.clearTimeout(this.autoStopTimeout);
-      this.autoStopTimeout = null;
+  private speakAiResponse(text: string) {
+    if (!text || text.trim() === '') {
+      console.warn('[GdmLiveAudio] No text to speak.');
+      this.dispatchEvent(new CustomEvent('ai-speaking-state', { detail: { isAiSpeaking: false } }));
+      return;
     }
-    
-    // Stop media stream if it exists
-    if (this.mediaStream) {
-      this.mediaStream.getTracks().forEach(track => track.stop());
-      this.mediaStream = null;
-    }
-    
-    // Disconnect audio processor if it exists
-    if (this.audioProcessor) {
-      this.audioProcessor.disconnect();
-      this.audioProcessor = null;
-    }
-    
-    // Close audio contexts
-    this.safeCloseContext(this.inputAudioContext);
-    this.safeCloseContext(this.outputAudioContext);
-    
-    // Reset state
-    this.audioChunks = [];
-    this.isProcessing = false;
-    this.isRecording = false;
-  }
 
-  private async safeCloseContext(context: AudioContext | null): Promise<void> {
-    if (!context) return;
-    
-    try {
-      if (context.state !== 'closed') {
-        await context.close();
-      }
-    } catch (error) {
-      console.error('Error closing audio context:', error);
+    // Stop any ongoing speech
+    if (this.speechUtterance) {
+      window.speechSynthesis.cancel();
     }
+
+    this.speechUtterance = new SpeechSynthesisUtterance(text);
+    this.speechUtterance.lang = 'en-US';
+    this.speechUtterance.rate = 1.0;
+    this.speechUtterance.pitch = 1.0;
+
+    this.speechUtterance.onstart = () => {
+      console.log('[GdmLiveAudio] AI speaking (TTS)');
+      this.dispatchEvent(new CustomEvent('ai-speaking-state', { detail: { isAiSpeaking: true } }));
+    };
+
+    this.speechUtterance.onend = () => {
+      console.log('[GdmLiveAudio] AI finished speaking (TTS)');
+      this.dispatchEvent(new CustomEvent('ai-speaking-state', { detail: { isAiSpeaking: false } }));
+      this.speechUtterance = null;
+    };
+
+    this.speechUtterance.onerror = (event) => {
+      console.error('[GdmLiveAudio] Speech Synthesis Error:', event.error);
+      this.updateError(`TTS error: ${event.error}`);
+      this.dispatchEvent(new CustomEvent('ai-speaking-state', { detail: { isAiSpeaking: false } }));
+      this.speechUtterance = null;
+    };
+
+    window.speechSynthesis.speak(this.speechUtterance);
   }
 
   private updateStatus(message: string): void {
     this.status = message;
     this.requestUpdate('status');
+    this.dispatchEvent(new CustomEvent('status-changed', { detail: { status: message } }));
   }
 
   private updateError(message: string): void {
@@ -365,20 +332,37 @@ export class GdmLiveAudio extends LitElement {
   }
 
   public resetSession(): void {
-    this.cleanup();
-    this.initializeAudioContexts();
-    this.updateStatus('Ready');
-    this.error = '';
+    this.stopRecording();
+    if (this.speechUtterance) {
+      window.speechSynthesis.cancel();
+      this.speechUtterance = null;
+    }
     this.lastUserInterimTranscript = '';
+    this.updateStatus('Ready to listen');
+    this.updateError('');
   }
 
-  // Expose audio nodes for visualization
+  // Expose audio nodes for visualization (legacy compatibility)
   public getInputAudioContext(): AudioContext | null {
     return this.inputAudioContext;
   }
 
   public getAudioProcessor(): ScriptProcessorNode | null {
     return this.audioProcessor;
+  }
+
+  private cleanup(): void {
+    // Cleanup for browser STT/TTS implementation
+    if (this.speechRecognition) {
+      this.speechRecognition.stop();
+      this.speechRecognition = null;
+    }
+    if (this.speechUtterance) {
+      window.speechSynthesis.cancel();
+      this.speechUtterance = null;
+    }
+    this.isRecording = false;
+    this.lastUserInterimTranscript = '';
   }
 
   override disconnectedCallback() {
