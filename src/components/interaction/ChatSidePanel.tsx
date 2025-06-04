@@ -1,241 +1,319 @@
 
-import React, { useState, useCallback } from 'react';
-import { Theme, ChatMessage } from '../../../types';
-import { summarizeChatHistory, generateFollowUpBrief } from '../../../services/geminiService';
-import { X, Download, FileText, Brain, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
-import { FBC_BRAND_NAME } from '../../../constants';
+import React, { useState, useEffect } from 'react';
+import { X, FileText, Download, ChevronDown, ChevronRight, Loader2, MessageSquare, Clock, User, Bot } from 'lucide-react';
+import { Theme } from '../../../types';
 
 interface ChatSidePanelProps {
-  isOpen: boolean;
-  onClose: () => void;
   theme: Theme;
-  chatHistory: ChatMessage[];
+  onClose: () => void;
+  chatHistory: any[];
+  onDownloadTranscript: () => void;
+  onSummarizeChat: () => void;
+  onGenerateFollowUpBrief: () => void;
+  summaryData?: any;
+  isLoading?: boolean;
 }
 
-interface ParsedSummaryItem {
-  heading: string;
-  bullets: string[];
-}
+export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
+  theme,
+  onClose,
+  chatHistory,
+  onDownloadTranscript,
+  onSummarizeChat,
+  onGenerateFollowUpBrief,
+  summaryData,
+  isLoading = false
+}) => {
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<'summary' | 'analytics' | 'export'>('summary');
 
-export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({ isOpen, onClose, theme, chatHistory }) => {
-  const [summary, setSummary] = useState<string>('');
-  const [parsedSummary, setParsedSummary] = useState<ParsedSummaryItem[]>([]);
-  const [isSummarizing, setIsSummarizing] = useState(false);
-  const [followUpBrief, setFollowUpBrief] = useState<string>('');
-  const [isGeneratingBrief, setIsGeneratingBrief] = useState(false);
-  const [openSummaryItems, setOpenSummaryItems] = useState<Record<string, boolean>>({});
-
-
-  const handleSummarize = async () => {
-    setIsSummarizing(true);
-    setSummary('');
-    setParsedSummary([]);
-    try {
-      const result = await summarizeChatHistory(chatHistory);
-      setSummary(result);
-      parseAndSetSummary(result);
-    } catch (error) {
-      setSummary(`Error summarizing: ${error instanceof Error ? error.message : String(error)}`);
-      setParsedSummary([]);
-    } finally {
-      setIsSummarizing(false);
-    }
-  };
-  
-  const parseAndSetSummary = (markdownText: string) => {
-    const lines = markdownText.split('\n');
-    const summaryItems: ParsedSummaryItem[] = [];
-    let currentItem: ParsedSummaryItem | null = null;
-
-    lines.forEach(line => {
-        const headingMatch = line.match(/^##\s+(.*)/);
-        const bulletMatch = line.match(/^[\*\-]\s+(.*)/);
-
-        if (headingMatch) {
-            if (currentItem) {
-                summaryItems.push(currentItem);
-            }
-            currentItem = { heading: headingMatch[1].trim(), bullets: [] };
-        } else if (bulletMatch && currentItem) {
-            currentItem.bullets.push(bulletMatch[1].trim());
-        } else if (line.trim() && currentItem && currentItem.bullets.length === 0 && !line.startsWith('#')) {
-            // If it's not a heading or bullet but part of the current item's content (and not another heading)
-             // For now, we only capture explicit bullets. This could be expanded.
-        }
-    });
-
-    if (currentItem) {
-        summaryItems.push(currentItem);
-    }
-    setParsedSummary(summaryItems);
-    // By default, open the first summary item if available
-    if (summaryItems.length > 0) {
-        setOpenSummaryItems({ [summaryItems[0].heading]: true });
+  const toggleSection = (sectionId: string) => {
+    const newExpanded = new Set(expandedSections);
+    if (newExpanded.has(sectionId)) {
+      newExpanded.delete(sectionId);
     } else {
-        setOpenSummaryItems({});
+      newExpanded.add(sectionId);
     }
+    setExpandedSections(newExpanded);
   };
 
-  const toggleSummaryItem = (heading: string) => {
-    setOpenSummaryItems(prev => ({ ...prev, [heading]: !prev[heading] }));
-  };
-
-
-  const handleGenerateBrief = async () => {
-    setIsGeneratingBrief(true);
-    setFollowUpBrief('');
-    try {
-      const result = await generateFollowUpBrief(chatHistory);
-      setFollowUpBrief(result);
-    } catch (error) {
-      setFollowUpBrief(`Error generating brief: ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setIsGeneratingBrief(false);
-    }
-  };
-
-  const handleDownload = () => {
-    const userProvidedName = chatHistory.find(msg => msg.sender === 'user' && msg.text?.toLowerCase().includes("my name is"))?.text?.match(/my name is (.*?)(?:,|\.|$)/i)?.[1].trim();
-    const userProvidedEmail = chatHistory.find(msg => msg.sender === 'user' && msg.text?.includes("@"))?.text?.match(/[\w.-]+@[\w.-]+\.\w+/)?.[0];
-
-    let content = `Conversation Brief - ${FBC_BRAND_NAME} AI Assistant\n`;
-    content += `Date: ${new Date().toLocaleDateString()}\n\n`;
-
-    if (userProvidedName) content += `User Name (Mentioned): ${userProvidedName}\n`;
-    if (userProvidedEmail) content += `User Email (Mentioned): ${userProvidedEmail}\n`;
-    if (userProvidedName || userProvidedEmail) content += `\n`;
-    
-    content += "--- CHAT HISTORY ---\n";
-    chatHistory.forEach(msg => {
-      const senderPrefix = msg.sender === 'user' ? "User" : (msg.sender === 'ai' ? "AI" : "System");
-      content += `[${new Date(msg.timestamp).toLocaleTimeString()}] ${senderPrefix}: ${msg.text || (msg.imageUrl ? '[Image]' : '')}\n`;
-      if (msg.sources && msg.sources.length > 0) {
-        content += `  Sources:\n`;
-        msg.sources.forEach(s => content += `    - ${s.title}: ${s.uri}\n`);
-      }
-    });
-    content += "\n--- END OF CHAT HISTORY ---\n\n";
-
-    if (summary) {
-      content += "--- CONVERSATION SUMMARY (AI Generated) ---\n";
-      // Use parsed summary for better formatting if available
-      if(parsedSummary.length > 0){
-        parsedSummary.forEach(item => {
-            content += `\n## ${item.heading}\n`;
-            item.bullets.forEach(bullet => content += `* ${bullet}\n`);
-        });
-      } else {
-          content += summary.replace(/^##\s+/gm, '').replace(/^[\*\-]\s+/gm, '  - '); // Basic formatting
-      }
-      content += "\n--- END OF SUMMARY ---\n\n";
-    }
-
-    if (followUpBrief) {
-      content += "--- FOLLOW-UP BRIEF (AI Generated) ---\n";
-      content += followUpBrief.replace(/^##\s+/gm, '').replace(/^[\*\-]\s+/gm, '  - '); // Basic formatting
-      content += "\n--- END OF BRIEF ---\n";
-    }
-
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.href = url;
-    link.download = `FBC_AI_Chat_Brief_${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+  // Responsive classes
+  const panelBg = theme === Theme.DARK 
+    ? 'bg-black/95 border-white/10' 
+    : 'bg-white/95 border-black/10';
   
-  const panelBg = theme === Theme.DARK ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-300';
-  const textColor = theme === Theme.DARK ? 'text-gray-200' : 'text-gray-700';
-  const buttonBase = `w-full flex items-center justify-center px-3 py-2.5 rounded-md text-sm font-medium transition-colors disabled:opacity-60`;
-  const primaryButton = `${buttonBase} ${theme === Theme.DARK ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'bg-orange-500 hover:bg-orange-600 text-white'}`;
-  const secondaryButton = `${buttonBase} ${theme === Theme.DARK ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`;
-  const outputAreaBg = theme === Theme.DARK ? 'bg-gray-900/50 border-gray-700/70' : 'bg-white/70 border-gray-300/70';
-  const outputTextColor = theme === Theme.DARK ? 'text-gray-300' : 'text-gray-700';
-  const detailsSummaryStyles = `py-2 px-1 cursor-pointer flex justify-between items-center w-full font-medium text-sm ${theme === Theme.DARK ? 'text-orange-400 hover:text-orange-300' : 'text-orange-600 hover:text-orange-700'}`;
-  const detailsContentStyles = `pb-2 pl-3 text-xs ${outputTextColor} space-y-1`;
+  const textColor = theme === Theme.DARK ? 'text-white' : 'text-black';
+  const mutedTextColor = theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600';
+  const cardBg = theme === Theme.DARK ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/10';
 
-
-  if (!isOpen) return null;
+  const tabs = [
+    { id: 'summary', label: 'Summary', icon: MessageSquare },
+    { id: 'analytics', label: 'Analytics', icon: Clock },
+    { id: 'export', label: 'Export', icon: Download }
+  ];
 
   return (
-    <div className={`h-full w-72 md:w-80 flex-shrink-0 p-4 border-r flex flex-col space-y-4 ${panelBg} ${textColor}`}>
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold flex items-center">
-          <FileText size={20} className="mr-2 text-[var(--accent-color)]" />
-          Conv<span className="text-[var(--accent-color)]">o</span> Tools
-        </h3>
-        <div className="text-xs text-gray-500 mt-1">
-          Smart conversation analysis & insights
-        </div>
-        <button onClick={onClose} className={`p-1.5 rounded-full ${theme === Theme.DARK ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`} aria-label="Close side panel">
-          <X size={18} />
-        </button>
-      </div>
-
-      <div className="space-y-3">
-        <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 text-xs">
-          <div className="font-medium text-orange-800 dark:text-orange-300 mb-1">Key Context:</div>
-          <div className="text-orange-700 dark:text-orange-400 space-y-1">
-            <div>• Messages: {chatHistory.length}</div>
-            <div>• Voice active: {chatHistory.some(m => m.text?.includes('voice')) ? 'Yes' : 'No'}</div>
-            <div>• Topics: AI consulting, services, automation</div>
-          </div>
-        </div>
-        <button onClick={handleSummarize} disabled={isSummarizing || chatHistory.length === 0} className={primaryButton}>
-          {isSummarizing ? <Loader2 size={18} className="animate-spin mr-2" /> : <Brain size={18} className="mr-2" />}
-          Summarize Chat
-        </button>
-        <button onClick={handleGenerateBrief} disabled={isGeneratingBrief || chatHistory.length === 0} className={primaryButton}>
-          {isGeneratingBrief ? <Loader2 size={18} className="animate-spin mr-2" /> : <FileText size={18} className="mr-2" />}
-          Generate Follow-up Brief
-        </button>
-      </div>
-      
-      <div className={`flex-grow overflow-y-auto space-y-3 p-3 rounded-lg border ${outputAreaBg}`}>
-        {summary && parsedSummary.length > 0 && (
-          <div>
-            <h4 className={`text-sm font-semibold mb-1.5 ${textColor}`}>Conversation Summary:</h4>
-            <div className="space-y-1">
-            {parsedSummary.map((item, index) => (
-                <details key={index} open={openSummaryItems[item.heading] || false} className={`border-b ${theme === Theme.DARK ? 'border-gray-700/50' : 'border-gray-300/50'}`}>
-                    <summary onClick={(e) => { e.preventDefault(); toggleSummaryItem(item.heading);}} className={detailsSummaryStyles}>
-                        {item.heading}
-                        {openSummaryItems[item.heading] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </summary>
-                    <div className={detailsContentStyles}>
-                        {item.bullets.length > 0 ? (
-                            <ul className="list-disc list-inside pl-2 space-y-0.5">
-                                {item.bullets.map((bullet, bIndex) => <li key={bIndex}>{bullet}</li>)}
-                            </ul>
-                        ) : <p className="italic text-xs">No specific details under this topic.</p>}
-                    </div>
-                </details>
-            ))}
+    <div className={`
+      fixed inset-y-0 right-0 z-50 w-full sm:w-96 lg:w-[28rem] 
+      ${panelBg} backdrop-blur-xl border-l shadow-2xl
+      flex flex-col overflow-hidden
+      transform transition-transform duration-300 ease-out
+    `}>
+      {/* Enhanced Header */}
+      <div className={`
+        flex-shrink-0 px-6 py-4 border-b ${theme === Theme.DARK ? 'border-white/10' : 'border-black/10'}
+        bg-gradient-to-r ${theme === Theme.DARK ? 'from-orange-500/10 to-transparent' : 'from-orange-100/50 to-transparent'}
+      `}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <div className={`p-2 rounded-lg ${cardBg} border`}>
+              <FileText size={20} className="text-orange-500" />
             </div>
-          </div>
-        )}
-        {summary && parsedSummary.length === 0 && !isSummarizing && (
             <div>
-                <h4 className={`text-sm font-semibold mb-1.5 ${textColor}`}>Conversation Summary:</h4>
-                <div className={`text-xs whitespace-pre-wrap ${outputTextColor}`} dangerouslySetInnerHTML={{__html: summary.replace(/\n/g, '<br/>')}}></div>
+              <h3 className={`text-lg font-semibold ${textColor}`}>
+                Conversation Tools
+              </h3>
+              <p className={`text-xs ${mutedTextColor}`}>
+                Analysis & insights
+              </p>
             </div>
+          </div>
+          <button 
+            onClick={onClose}
+            className={`
+              p-2 rounded-lg transition-all duration-200
+              ${theme === Theme.DARK ? 'hover:bg-white/10' : 'hover:bg-black/10'}
+              ${mutedTextColor} hover:text-orange-500
+            `}
+            aria-label="Close panel"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex space-x-1">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id as any)}
+              className={`
+                flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium
+                transition-all duration-200 flex-1 justify-center
+                ${activeTab === id 
+                  ? 'bg-orange-500 text-white shadow-lg' 
+                  : `${mutedTextColor} hover:bg-orange-500/10 hover:text-orange-500`
+                }
+              `}
+            >
+              <Icon size={16} />
+              <span className="hidden sm:inline">{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Summary Tab */}
+        {activeTab === 'summary' && (
+          <div className="p-6 space-y-6">
+            {/* Quick Actions */}
+            <div className="space-y-3">
+              <h4 className={`text-sm font-semibold uppercase tracking-wider ${mutedTextColor}`}>
+                Quick Actions
+              </h4>
+              <div className="grid grid-cols-1 gap-3">
+                <button
+                  onClick={onSummarizeChat}
+                  disabled={isLoading || chatHistory.length === 0}
+                  className={`
+                    flex items-center justify-center space-x-2 p-3 rounded-lg border
+                    transition-all duration-200 ${cardBg}
+                    ${isLoading || chatHistory.length === 0 
+                      ? 'opacity-50 cursor-not-allowed' 
+                      : 'hover:border-orange-500/50 hover:bg-orange-500/5'
+                    }
+                  `}
+                >
+                  {isLoading ? (
+                    <Loader2 size={16} className="animate-spin text-orange-500" />
+                  ) : (
+                    <MessageSquare size={16} className="text-orange-500" />
+                  )}
+                  <span className={`text-sm font-medium ${textColor}`}>
+                    Generate Summary
+                  </span>
+                </button>
+
+                <button
+                  onClick={onGenerateFollowUpBrief}
+                  disabled={isLoading || chatHistory.length === 0}
+                  className={`
+                    flex items-center justify-center space-x-2 p-3 rounded-lg border
+                    transition-all duration-200 ${cardBg}
+                    ${isLoading || chatHistory.length === 0 
+                      ? 'opacity-50 cursor-not-allowed' 
+                      : 'hover:border-orange-500/50 hover:bg-orange-500/5'
+                    }
+                  `}
+                >
+                  {isLoading ? (
+                    <Loader2 size={16} className="animate-spin text-orange-500" />
+                  ) : (
+                    <Clock size={16} className="text-orange-500" />
+                  )}
+                  <span className={`text-sm font-medium ${textColor}`}>
+                    Follow-up Brief
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Summary Content */}
+            {summaryData && (
+              <div className="space-y-4">
+                <h4 className={`text-sm font-semibold uppercase tracking-wider ${mutedTextColor}`}>
+                  Summary Results
+                </h4>
+                {Object.entries(summaryData).map(([key, value]) => (
+                  <div key={key} className={`border rounded-lg ${cardBg}`}>
+                    <button
+                      onClick={() => toggleSection(key)}
+                      className={`
+                        w-full flex items-center justify-between p-4
+                        hover:bg-orange-500/5 transition-colors duration-200
+                      `}
+                    >
+                      <span className={`font-medium capitalize ${textColor}`}>
+                        {key.replace(/([A-Z])/g, ' $1').trim()}
+                      </span>
+                      {expandedSections.has(key) ? (
+                        <ChevronDown size={16} className="text-orange-500" />
+                      ) : (
+                        <ChevronRight size={16} className={mutedTextColor} />
+                      )}
+                    </button>
+                    {expandedSections.has(key) && (
+                      <div className="px-4 pb-4">
+                        <div className={`text-sm leading-relaxed ${textColor}`}>
+                          {Array.isArray(value) ? (
+                            <ul className="space-y-2">
+                              {value.map((item, index) => (
+                                <li key={index} className="flex items-start space-x-2">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-2 flex-shrink-0" />
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p>{value}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
+        {/* Analytics Tab */}
+        {activeTab === 'analytics' && (
+          <div className="p-6 space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className={`p-4 rounded-lg border ${cardBg}`}>
+                <div className="flex items-center space-x-2 mb-2">
+                  <MessageSquare size={16} className="text-orange-500" />
+                  <span className={`text-xs font-medium uppercase tracking-wider ${mutedTextColor}`}>
+                    Messages
+                  </span>
+                </div>
+                <div className={`text-2xl font-bold ${textColor}`}>
+                  {chatHistory.length}
+                </div>
+              </div>
+              
+              <div className={`p-4 rounded-lg border ${cardBg}`}>
+                <div className="flex items-center space-x-2 mb-2">
+                  <User size={16} className="text-orange-500" />
+                  <span className={`text-xs font-medium uppercase tracking-wider ${mutedTextColor}`}>
+                    User
+                  </span>
+                </div>
+                <div className={`text-2xl font-bold ${textColor}`}>
+                  {chatHistory.filter(msg => msg.type === 'user').length}
+                </div>
+              </div>
+              
+              <div className={`p-4 rounded-lg border ${cardBg}`}>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Bot size={16} className="text-orange-500" />
+                  <span className={`text-xs font-medium uppercase tracking-wider ${mutedTextColor}`}>
+                    Assistant
+                  </span>
+                </div>
+                <div className={`text-2xl font-bold ${textColor}`}>
+                  {chatHistory.filter(msg => msg.type === 'assistant').length}
+                </div>
+              </div>
+              
+              <div className={`p-4 rounded-lg border ${cardBg}`}>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Clock size={16} className="text-orange-500" />
+                  <span className={`text-xs font-medium uppercase tracking-wider ${mutedTextColor}`}>
+                    Duration
+                  </span>
+                </div>
+                <div className={`text-2xl font-bold ${textColor}`}>
+                  {chatHistory.length > 0 ? '5m' : '0m'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-        {followUpBrief && (
-          <div>
-            <h4 className={`text-sm font-semibold mb-1.5 ${textColor}`}>Follow-up Brief:</h4>
-            <div className={`text-xs whitespace-pre-wrap ${outputTextColor}`} dangerouslySetInnerHTML={{__html: followUpBrief.replace(/\n/g, '<br/>')}}></div>
+        {/* Export Tab */}
+        {activeTab === 'export' && (
+          <div className="p-6 space-y-6">
+            <div className="space-y-3">
+              <h4 className={`text-sm font-semibold uppercase tracking-wider ${mutedTextColor}`}>
+                Export Options
+              </h4>
+              <button
+                onClick={onDownloadTranscript}
+                disabled={chatHistory.length === 0}
+                className={`
+                  w-full flex items-center justify-center space-x-2 p-4 rounded-lg border
+                  transition-all duration-200 ${cardBg}
+                  ${chatHistory.length === 0 
+                    ? 'opacity-50 cursor-not-allowed' 
+                    : 'hover:border-orange-500/50 hover:bg-orange-500/5'
+                  }
+                `}
+              >
+                <Download size={16} className="text-orange-500" />
+                <span className={`font-medium ${textColor}`}>
+                  Download Transcript
+                </span>
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      <button onClick={handleDownload} disabled={chatHistory.length === 0} className={secondaryButton}>
-        <Download size={18} className="mr-2" /> Download Full Brief (.txt)
-      </button>
+      {/* Footer */}
+      <div className={`
+        flex-shrink-0 px-6 py-4 border-t ${theme === Theme.DARK ? 'border-white/10' : 'border-black/10'}
+        ${theme === Theme.DARK ? 'bg-white/5' : 'bg-black/5'}
+      `}>
+        <p className={`text-xs text-center ${mutedTextColor}`}>
+          Conversation analysis powered by AI
+        </p>
+      </div>
     </div>
   );
 };
+
+export default ChatSidePanel;

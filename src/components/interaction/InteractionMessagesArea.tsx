@@ -1,99 +1,206 @@
 
-import React, { useEffect, useRef } from 'react';
-import { ChatMessage, Theme, MessageSender } from '../../../types';
-import { ChatMessageBubble } from '../ChatMessageBubble';
-import { MessageCircle, Zap, Info, Lightbulb } from 'lucide-react'; 
-import { FBC_BRAND_NAME } from '../../../constants';
+import React, { useRef, useEffect, useState } from 'react';
+import { Theme } from '../../../types';
+import { MessageSquare, ArrowDown } from 'lucide-react';
 
-interface InteractionMessagesAreaProps {
-  messages: ChatMessage[];
-  theme: Theme;
-  isAiThinking: boolean;
-  isPanelFullscreen?: boolean; 
-  onExpandRequest?: (message: ChatMessage) => void;
-  onSendMessage: (messageText: string) => void;
-  isPanelVoiceActive: boolean; 
-  onFormSubmit?: (messageId: string, formData: Record<string, string>) => void; // Added prop
+interface Message {
+  id: string;
+  content: string;
+  type: 'user' | 'assistant';
+  timestamp: Date;
+  imageUrl?: string;
+  attachments?: File[];
+  isLoading?: boolean;
+  error?: string;
 }
 
-export const InteractionMessagesArea: React.FC<InteractionMessagesAreaProps> = ({ 
-  messages, 
-  theme, 
-  isAiThinking,
-  isPanelFullscreen,
+interface InteractionMessagesAreaProps {
+  theme: Theme;
+  messages: Message[];
+  isTyping?: boolean;
+  onExpandRequest?: (message: Message) => void;
+  onRetry?: (messageId: string) => void;
+  onFormSubmit?: (formData: any) => void;
+  isFullscreen?: boolean;
+  emptyStatePrompts?: string[];
+}
+
+export const InteractionMessagesArea: React.FC<InteractionMessagesAreaProps> = ({
+  theme,
+  messages,
+  isTyping = false,
   onExpandRequest,
-  onSendMessage,
-  isPanelVoiceActive,
-  onFormSubmit, // Destructure prop
+  onRetry,
+  onFormSubmit,
+  isFullscreen = false,
+  emptyStatePrompts = []
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [hasNewMessages, setHasNewMessages] = useState(false);
 
+  // Theme-based styling
+  const containerBg = theme === Theme.DARK 
+    ? 'bg-black/50' 
+    : 'bg-white/50';
+  
+  const textColor = theme === Theme.DARK ? 'text-white' : 'text-black';
+  const mutedTextColor = theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600';
+  const scrollButtonBg = theme === Theme.DARK 
+    ? 'bg-white/10 hover:bg-white/20' 
+    : 'bg-black/10 hover:bg-black/20';
+
+  // Scroll handling
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+    setHasNewMessages(false);
+  };
+
+  // Monitor scroll position
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setShowScrollButton(!isNearBottom);
+      if (isNearBottom) setHasNewMessages(false);
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+
+    if (isNearBottom) {
+      scrollToBottom('smooth');
+    } else {
+      setHasNewMessages(true);
+    }
   }, [messages]);
 
-  
-  const baseClasses = `flex-1 p-3 sm:p-4 space-y-1.5 overflow-y-auto`;
-  
-  let areaBgClass = '';
-  if (isPanelFullscreen) {
-    areaBgClass = theme === Theme.DARK ? 'bg-[var(--background-dark)]' : 'bg-[var(--background-light)]'; 
-  } else {
-    areaBgClass = theme === Theme.DARK ? 'bg-gray-800' : 'bg-white'; 
-  }
-
-  const fullscreenScrollbarStyles = isPanelFullscreen 
-    ? `scrollbar-thin ${theme === Theme.DARK ? 'scrollbar-thumb-[var(--accent-color)] scrollbar-track-gray-800' : 'scrollbar-thumb-[var(--accent-color)] scrollbar-track-gray-200'}` 
-    : '';
-  
-  const suggestionCards = [
-    { text: "What are the advantages of Next.js?", icon: Zap },
-    { text: "Write code for Dijkstra's algorithm", icon: Lightbulb },
-    { text: `Tell me about ${FBC_BRAND_NAME}'s services`, icon: Info },
-    { text: "What is the weather in San Francisco?", icon: MessageCircle }
-  ];
-
-  const showEmptyStateSuggestions = messages.length === 0 && !isAiThinking && !isPanelVoiceActive;
+  // Initial scroll
+  useEffect(() => {
+    scrollToBottom('auto');
+  }, []);
 
   return (
-    <div className={`${baseClasses} ${areaBgClass} ${fullscreenScrollbarStyles}`}>
-      {showEmptyStateSuggestions ? (
-        <div className={`empty-state text-center p-6 flex flex-col items-center justify-center h-full ${theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600'}`}>
-          <div className="mb-8">
-            <h3 className={`text-2xl font-semibold mb-2 ${theme === Theme.DARK ? 'text-gray-100' : 'text-gray-700'}`}>Hello there!</h3>
-            <p className={`text-md ${theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600'}`}>How can I help you today?</p>
+    <div className="relative flex-1 flex flex-col overflow-hidden">
+      {/* Messages Container */}
+      <div
+        ref={containerRef}
+        className={`
+          flex-1 overflow-y-auto
+          ${containerBg} backdrop-blur-xl
+          ${isFullscreen ? '' : 'rounded-t-xl'}
+          transition-all duration-200
+        `}
+      >
+        {messages.length === 0 ? (
+          // Empty State
+          <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+            <div className={`
+              p-4 rounded-full mb-4
+              ${theme === Theme.DARK ? 'bg-white/5' : 'bg-black/5'}
+            `}>
+              <MessageSquare size={32} className="text-orange-500" />
+            </div>
+            <h3 className={`text-lg font-semibold mb-2 ${textColor}`}>
+              Start a Conversation
+            </h3>
+            <p className={`text-sm mb-6 ${mutedTextColor}`}>
+              Choose a prompt or type your own message to begin
+            </p>
+            {emptyStatePrompts.length > 0 && (
+              <div className="grid gap-2 w-full max-w-md">
+                {emptyStatePrompts.map((prompt, index) => (
+                  <button
+                    key={index}
+                    className={`
+                      p-3 rounded-lg border text-sm text-left transition-all duration-200
+                      ${theme === Theme.DARK 
+                        ? 'border-white/10 hover:bg-white/5' 
+                        : 'border-black/10 hover:bg-black/5'
+                      }
+                      ${textColor}
+                    `}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 w-full max-w-md lg:max-w-lg">
-            {suggestionCards.map((card, index) => (
-              <button
-                key={index}
-                onClick={() => onSendMessage(card.text)}
-                className={`p-3 rounded-lg text-left text-sm transition-colors border
-                  ${theme === Theme.DARK 
-                    ? 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-300' 
-                    : 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-gray-700'}`}
+        ) : (
+          // Messages List
+          <div className="flex flex-col min-h-full p-4 sm:p-6">
+            {messages.map((message, index) => (
+              <div
+                key={message.id}
+                className={`
+                  flex flex-col max-w-3xl mx-auto w-full
+                  ${index > 0 ? 'mt-6' : ''}
+                `}
               >
-                <div className="flex items-start gap-2">
-                  {card.icon && <card.icon size={16} className="mt-0.5 shrink-0" style={{ color: 'var(--accent-color)' }} />}
-                  <span>{card.text}</span>
+                {/* Message Component would go here */}
+                {/* This is a placeholder for the ChatMessageBubble component */}
+                <div className={`
+                  flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}
+                `}>
+                  {/* Placeholder for actual message content */}
                 </div>
-              </button>
+              </div>
             ))}
+            
+            {/* Typing Indicator */}
+            {isTyping && (
+              <div className="flex items-center space-x-2 mt-6 max-w-3xl mx-auto w-full">
+                <div className={`
+                  flex space-x-1 px-4 py-3 rounded-2xl
+                  ${theme === Theme.DARK ? 'bg-white/5' : 'bg-black/5'}
+                `}>
+                  <div className="w-2 h-2 rounded-full bg-orange-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-2 h-2 rounded-full bg-orange-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-2 h-2 rounded-full bg-orange-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              </div>
+            )}
+
+            {/* Messages End Marker */}
+            <div ref={messagesEndRef} />
           </div>
-        </div>
-      ) : (
-        messages.map((msg) => (
-          <ChatMessageBubble 
-            key={msg.id} 
-            message={msg} 
-            theme={theme} 
-            isPanelFullscreen={isPanelFullscreen}
-            onExpandRequest={onExpandRequest}
-            onFormSubmit={onFormSubmit} // Pass prop
-          />
-        ))
+        )}
+      </div>
+
+      {/* Scroll to Bottom Button */}
+      {showScrollButton && (
+        <button
+          onClick={() => scrollToBottom()}
+          className={`
+            absolute bottom-4 right-4 p-2 rounded-full shadow-lg
+            transition-all duration-200 transform
+            ${scrollButtonBg} ${textColor}
+            ${hasNewMessages ? 'animate-bounce' : ''}
+          `}
+          title="Scroll to bottom"
+        >
+          <ArrowDown size={20} className={hasNewMessages ? 'text-orange-500' : ''} />
+          {hasNewMessages && (
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full" />
+          )}
+        </button>
       )}
-      <div ref={messagesEndRef} />
     </div>
   );
 };
+
+export default InteractionMessagesArea;

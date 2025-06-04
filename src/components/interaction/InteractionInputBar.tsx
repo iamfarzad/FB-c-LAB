@@ -1,248 +1,404 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Send, Mic, Paperclip, Image as ImageIcon, Search as SearchIcon, XCircle, MicOff } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { 
+  Send, 
+  Mic, 
+  MicOff, 
+  Paperclip, 
+  Image, 
+  FileText, 
+  Smile, 
+  Square, 
+  Loader2,
+  X,
+  Plus,
+  Camera,
+  Video
+} from 'lucide-react';
 import { Theme } from '../../../types';
-
-type InputMode = 'text' | 'image' | 'search';
 
 interface InteractionInputBarProps {
   theme: Theme;
-  onSendMessage: (messageText: string, imageBase64?: string, imageMimeType?: string) => void;
-  onActivateVoiceMode: () => void;
-  isAiThinking: boolean;
-  isPanelFullscreen?: boolean;
-  isPanelVoiceActive: boolean;
-  onDeactivateVoiceMode: () => void;
-  interimTranscript?: string; 
+  onSendMessage: (message: string, attachments?: File[]) => void;
+  onVoiceModeToggle: () => void;
+  isVoiceMode: boolean;
+  isListening: boolean;
+  interimTranscript?: string;
+  isFullscreen?: boolean;
+  disabled?: boolean;
+  placeholder?: string;
+  maxLength?: number;
 }
 
 export const InteractionInputBar: React.FC<InteractionInputBarProps> = ({
   theme,
   onSendMessage,
-  onActivateVoiceMode,
-  isAiThinking,
-  isPanelFullscreen,
-  isPanelVoiceActive,
-  onDeactivateVoiceMode,
-  interimTranscript,
+  onVoiceModeToggle,
+  isVoiceMode,
+  isListening,
+  interimTranscript = '',
+  isFullscreen = false,
+  disabled = false,
+  placeholder = "Type your message...",
+  maxLength = 2000
 }) => {
-  const [messageInput, setMessageInput] = useState('');
-  const [inputMode, setInputMode] = useState<InputMode>('text');
+  const [message, setMessage] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [isComposing, setIsComposing] = useState(false);
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const attachmentMenuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (isPanelVoiceActive && interimTranscript) {
-      setMessageInput(interimTranscript);
-    } else if (!isPanelVoiceActive && messageInput === interimTranscript) {
-      // Clear if voice deactivated and input shows old interim.
-    }
-  }, [isPanelVoiceActive, interimTranscript, messageInput]);
-
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if (!isPanelVoiceActive) { 
-      setMessageInput(e.target.value);
-    }
-  };
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'; 
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 100)}px`; 
-    }
-  }, [messageInput]);
-
-  const resetInputState = (keepVoiceActive = false) => {
-    if (!keepVoiceActive || !interimTranscript) {
-        setMessageInput('');
-    }
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-    }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''; 
-    }
-  };
+  // Theme-based styling
+  const containerBg = theme === Theme.DARK 
+    ? 'bg-black/90 border-white/10' 
+    : 'bg-white/90 border-black/10';
   
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result?.toString().split(',')[1];
-        if (base64String) {
-          onSendMessage(messageInput || `Describe this attached image`, base64String, file.type);
-          resetInputState(isPanelVoiceActive);
-        }
-      };
-      reader.readAsDataURL(file);
+  const inputBg = theme === Theme.DARK 
+    ? 'bg-white/5 border-white/10 focus:border-orange-500/50' 
+    : 'bg-black/5 border-black/10 focus:border-orange-500/50';
+  
+  const textColor = theme === Theme.DARK ? 'text-white' : 'text-black';
+  const placeholderColor = theme === Theme.DARK ? 'placeholder-gray-400' : 'placeholder-gray-500';
+  const buttonBg = theme === Theme.DARK ? 'bg-white/10 hover:bg-white/20' : 'bg-black/10 hover:bg-black/20';
+
+  // Auto-resize textarea
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      const maxHeight = isFullscreen ? 200 : 120;
+      textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
     }
-  };
+  }, [isFullscreen]);
 
-  const handleSendOrMicToggle = useCallback(() => {
-    console.log('[InteractionInputBar DEBUG] handleSendOrMicToggle called', { 
-      isPanelVoiceActive, 
-      messageInput, 
-      messageInputTrimmed: messageInput.trim(),
-      inputMode, 
-      isAiThinking,
-      shouldActivateVoice: messageInput.trim() === '' && inputMode === 'text' && !isAiThinking
-    });
-    
-    if (isPanelVoiceActive) { 
-      console.log('[InteractionInputBar DEBUG] Deactivating voice mode');
-      onDeactivateVoiceMode();
-      resetInputState(false); 
-      return;
-    }
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [message, adjustTextareaHeight]);
 
-    if (messageInput.trim() === '' && inputMode === 'text' && !isAiThinking) { 
-        console.log('[InteractionInputBar DEBUG] Conditions met - calling onActivateVoiceMode()');
-        try {
-          onActivateVoiceMode();
-          console.log('[InteractionInputBar DEBUG] onActivateVoiceMode() called successfully');
-        } catch (error) {
-          console.error('[InteractionInputBar ERROR] onActivateVoiceMode() failed:', error);
-        }
-    } else if (messageInput.trim() !== '') { 
-        console.log('[InteractionInputBar DEBUG] Sending message instead of activating voice');
-        if (isAiThinking) return; 
-
-        let messageToSend = messageInput.trim();
-        if (inputMode === 'image') {
-            messageToSend = `generate image: ${messageToSend}`;
-        } else if (inputMode === 'search') {
-            messageToSend = `search web: ${messageToSend}`;
-        }
-        onSendMessage(messageToSend);
-        resetInputState(false); 
-    } else {
-        console.log('[InteractionInputBar DEBUG] No action taken - conditions not met for voice or send');
-    }
-  }, [messageInput, onSendMessage, onActivateVoiceMode, onDeactivateVoiceMode, isAiThinking, inputMode, isPanelVoiceActive]);
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (messageInput.trim() !== '' && !isAiThinking && !isPanelVoiceActive) { 
-        handleSendOrMicToggle();
+  // Handle message sending
+  const handleSend = useCallback(() => {
+    const finalMessage = message.trim() || interimTranscript.trim();
+    if (finalMessage && !disabled) {
+      onSendMessage(finalMessage, attachments.length > 0 ? attachments : undefined);
+      setMessage('');
+      setAttachments([]);
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
       }
     }
+  }, [message, interimTranscript, attachments, disabled, onSendMessage]);
+
+  // Handle key press
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
-  const triggerFileSelect = () => fileInputRef.current?.click();
+  // Handle file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setAttachments(prev => [...prev, ...files]);
+    setShowAttachmentMenu(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
-  let placeholderText = "Send a message or tap mic to speak...";
-  if (isPanelVoiceActive) {
-    placeholderText = "Listening... Tap mic to stop.";
-  } else if (inputMode === 'image') {
-    placeholderText = "Describe image to generate...";
-  } else if (inputMode === 'search') {
-    placeholderText = "Enter web search query...";
-  }
-  
-  const inputBarContainerBg = isPanelFullscreen 
-    ? (theme === Theme.DARK ? 'bg-black border-[var(--border-dark)]' : 'bg-gray-100 border-[var(--border-light)]')
-    : (theme === Theme.DARK ? 'bg-gray-800 border-[var(--border-dark)]' : 'bg-gray-100 border-[var(--border-light)]');
+  // Handle drag and drop
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
 
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
 
-  const mainInputContainerBaseStyle = `flex items-center w-full px-2 py-1 rounded-full shadow-sm transition-all border-2`;
-  const mainInputContainerColors = isPanelVoiceActive 
-    ? (theme === Theme.DARK ? 'bg-gray-700 text-[var(--accent-color)] border-[var(--accent-color)] animate-pulse-bg-custom' : 'bg-orange-100 text-[var(--accent-color-darker)] border-[var(--accent-color)] animate-pulse-bg-custom')
-    : (theme === Theme.DARK
-      ? 'bg-gray-700 text-gray-200 border-gray-600 hover:border-[var(--accent-color)] focus-within:border-[var(--accent-color)]'
-      : 'bg-gray-100 text-gray-800 border-gray-300 hover:border-[var(--accent-color)] focus-within:border-[var(--accent-color)]');
-  
-  const iconButtonColor = theme === Theme.DARK ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700';
-  
-  const modeButtonBase = `p-1.5 rounded-md transition-colors text-xs flex items-center gap-1`;
-  const modeButtonActive = theme === Theme.DARK ? 'bg-[var(--accent-color)] text-white' : 'bg-orange-200 text-[var(--accent-color-darker)]';
-  const modeButtonInactive = theme === Theme.DARK ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300';
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    setAttachments(prev => [...prev, ...files]);
+  };
+
+  // Remove attachment
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Close attachment menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (attachmentMenuRef.current && !attachmentMenuRef.current.contains(event.target as Node)) {
+        setShowAttachmentMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const attachmentOptions = [
+    { icon: Image, label: 'Image', accept: 'image/*', color: 'text-blue-500' },
+    { icon: FileText, label: 'Document', accept: '.pdf,.doc,.docx,.txt', color: 'text-green-500' },
+    { icon: Camera, label: 'Camera', accept: 'image/*', capture: 'environment', color: 'text-purple-500' },
+    { icon: Video, label: 'Video', accept: 'video/*', color: 'text-red-500' }
+  ];
+
+  const displayMessage = message || interimTranscript;
+  const canSend = (displayMessage.trim().length > 0 || attachments.length > 0) && !disabled;
+  const characterCount = displayMessage.length;
+  const isNearLimit = characterCount > maxLength * 0.8;
 
   return (
-    <div className={`flex-shrink-0 p-2 sm:p-3 border-t ${inputBarContainerBg}`}>
-      {!isPanelVoiceActive && (
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <button
-            onClick={() => setInputMode('text')}
-            className={`${modeButtonBase} ${inputMode === 'text' ? modeButtonActive : modeButtonInactive}`}
-            disabled={isAiThinking}
-            title="Text Input Mode"
-          >
-            Text
-          </button>
-          <button
-            onClick={() => setInputMode(inputMode === 'image' ? 'text' : 'image')}
-            className={`${modeButtonBase} ${inputMode === 'image' ? modeButtonActive : modeButtonInactive}`}
-            disabled={isAiThinking}
-            title="Image Generation Mode"
-          >
-            <ImageIcon size={14} /> Image
-          </button>
-          <button
-            onClick={() => setInputMode(inputMode === 'search' ? 'text' : 'search')}
-            className={`${modeButtonBase} ${inputMode === 'search' ? modeButtonActive : modeButtonInactive}`}
-            disabled={isAiThinking}
-            title="Web Search Mode"
-          >
-            <SearchIcon size={14} /> Search
-          </button>
+    <div className={`
+      relative flex-shrink-0 p-3 sm:p-4 border-t backdrop-blur-xl
+      ${containerBg} ${isDragOver ? 'border-orange-500/50 bg-orange-500/5' : ''}
+      transition-all duration-200
+    `}>
+      {/* Drag Overlay */}
+      {isDragOver && (
+        <div className={`
+          absolute inset-0 flex items-center justify-center
+          bg-orange-500/10 border-2 border-dashed border-orange-500/50 rounded-lg
+          backdrop-blur-sm z-10
+        `}>
+          <div className="text-center">
+            <Paperclip size={32} className="text-orange-500 mx-auto mb-2" />
+            <p className={`text-sm font-medium ${textColor}`}>Drop files to attach</p>
+          </div>
         </div>
       )}
 
+      {/* Attachments Preview */}
+      {attachments.length > 0 && (
+        <div className="mb-3">
+          <div className="flex flex-wrap gap-2">
+            {attachments.map((file, index) => (
+              <div
+                key={index}
+                className={`
+                  flex items-center space-x-2 px-3 py-2 rounded-lg border
+                  ${theme === Theme.DARK ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/10'}
+                `}
+              >
+                <div className="flex items-center space-x-2 flex-1 min-w-0">
+                  {file.type.startsWith('image/') ? (
+                    <Image size={16} className="text-blue-500 flex-shrink-0" />
+                  ) : (
+                    <FileText size={16} className="text-green-500 flex-shrink-0" />
+                  )}
+                  <span className={`text-sm truncate ${textColor}`}>
+                    {file.name}
+                  </span>
+                  <span className={`text-xs ${theme === Theme.DARK ? 'text-gray-400' : 'text-gray-500'}`}>
+                    ({(file.size / 1024).toFixed(1)}KB)
+                  </span>
+                </div>
+                <button
+                  onClick={() => removeAttachment(index)}
+                  className={`
+                    p-1 rounded-full transition-colors
+                    ${theme === Theme.DARK ? 'hover:bg-red-500/20 text-red-400' : 'hover:bg-red-100 text-red-500'}
+                  `}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Voice Mode Indicator */}
+      {isVoiceMode && (
+        <div className={`
+          mb-3 flex items-center justify-center space-x-2 p-3 rounded-lg
+          ${theme === Theme.DARK ? 'bg-orange-500/10 border-orange-500/20' : 'bg-orange-100/50 border-orange-200'}
+          border
+        `}>
+          <div className={`
+            w-3 h-3 rounded-full
+            ${isListening ? 'bg-red-500 animate-pulse' : 'bg-orange-500'}
+          `} />
+          <span className={`text-sm font-medium ${textColor}`}>
+            {isListening ? 'Listening...' : 'Voice mode active'}
+          </span>
+          {interimTranscript && (
+            <span className={`text-sm ${theme === Theme.DARK ? 'text-gray-300' : 'text-gray-600'}`}>
+              "{interimTranscript}"
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Main Input Container */}
       <div 
-        className={`${mainInputContainerBaseStyle} ${mainInputContainerColors}`}
+        className={`
+          relative flex items-end space-x-2 sm:space-x-3
+          ${isFocused ? 'ring-2 ring-orange-500/20 rounded-xl' : ''}
+          transition-all duration-200
+        `}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
-        {!isPanelVoiceActive && ( 
-            <>
-            <button
-                onClick={triggerFileSelect}
-                title="Attach image file"
-                className={`p-2 rounded-full ${iconButtonColor} transition-colors`}
-                disabled={isAiThinking}
-                aria-label="Attach image file"
-            >
-                <Paperclip size={20} />
-            </button>
-            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" style={{ display: 'none' }} />
-            </>
-        )}
-        
-        <textarea
-          ref={textareaRef}
-          rows={1}
-          value={messageInput}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholderText}
-          className={`flex-1 mx-1 p-1.5 bg-transparent border-none focus:outline-none resize-none leading-tight text-sm placeholder:text-current placeholder:opacity-60
-                      ${theme === Theme.DARK ? 'text-gray-200 placeholder-gray-400' : 'text-gray-800 placeholder-gray-500'}
-                      ${isPanelVoiceActive ? 'italic' : ''} 
+        {/* Attachment Button */}
+        <div className="relative" ref={attachmentMenuRef}>
+          <button
+            onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+            disabled={disabled}
+            className={`
+              p-2.5 sm:p-3 rounded-xl transition-all duration-200
+              ${disabled ? 'opacity-50 cursor-not-allowed' : `${buttonBg} hover:text-orange-500`}
+              ${textColor}
+            `}
+            title="Attach files"
+          >
+            <Paperclip size={18} />
+          </button>
+
+          {/* Attachment Menu */}
+          {showAttachmentMenu && (
+            <div className={`
+              absolute bottom-full left-0 mb-2 p-2 rounded-xl border shadow-xl
+              ${containerBg} backdrop-blur-xl z-20
+              min-w-[200px]
+            `}>
+              <div className="space-y-1">
+                {attachmentOptions.map((option, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      fileInputRef.current?.click();
+                      setShowAttachmentMenu(false);
+                    }}
+                    className={`
+                      w-full flex items-center space-x-3 px-3 py-2 rounded-lg
+                      transition-colors duration-200
+                      ${theme === Theme.DARK ? 'hover:bg-white/10' : 'hover:bg-black/10'}
                     `}
-          disabled={(isAiThinking && !isPanelVoiceActive) || (isPanelVoiceActive && !interimTranscript) } 
-          aria-label="Chat message input"
-          style={{ maxHeight: '100px' }} 
-          readOnly={isPanelVoiceActive} 
-        />
-        
-        <button 
-          onClick={handleSendOrMicToggle}
-          className={`p-2 rounded-full transition-all duration-200 flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center
-            ${isPanelVoiceActive ? 
-              (theme === Theme.DARK ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-red-500 text-white hover:bg-red-600') 
-            : (messageInput.trim() === '' && inputMode === 'text' && !isAiThinking ? 
-              (theme === Theme.DARK ? 'bg-[var(--accent-color)] text-white hover:bg-[var(--accent-color-hover)]' : 'bg-[var(--accent-color)] text-white hover:bg-[var(--accent-color-hover)]') 
-            : (isAiThinking ? 
-              (theme === Theme.DARK ? 'bg-gray-600 text-gray-400 cursor-not-allowed' : 'bg-gray-400 text-gray-200 cursor-not-allowed') 
-            : (theme === Theme.DARK ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-green-500 text-white hover:bg-green-600')) 
-            )}`}
-          aria-label={isPanelVoiceActive ? "Stop Listening" : (messageInput.trim() === '' && inputMode === 'text' && !isAiThinking ? "Activate Voice Input" : "Send Message")}
-          title={isPanelVoiceActive ? "Stop Listening" : (messageInput.trim() === '' && inputMode === 'text' && !isAiThinking ? "Activate Voice Input" : "Send Message")}
-          disabled={!isPanelVoiceActive && isAiThinking && messageInput.trim() !== ''} 
+                  >
+                    <option.icon size={18} className={option.color} />
+                    <span className={`text-sm ${textColor}`}>{option.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Text Input */}
+        <div className="flex-1 relative">
+          <textarea
+            ref={textareaRef}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={handleKeyPress}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            onCompositionStart={() => setIsComposing(true)}
+            onCompositionEnd={() => setIsComposing(false)}
+            placeholder={isVoiceMode ? "Speak or type your message..." : placeholder}
+            disabled={disabled}
+            maxLength={maxLength}
+            className={`
+              w-full px-4 py-3 rounded-xl border resize-none
+              ${inputBg} ${textColor} ${placeholderColor}
+              focus:outline-none focus:ring-2 focus:ring-orange-500/20
+              transition-all duration-200
+              ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
+            style={{ minHeight: '48px' }}
+            rows={1}
+          />
+          
+          {/* Character Counter */}
+          {characterCount > 0 && (
+            <div className={`
+              absolute bottom-2 right-2 text-xs
+              ${isNearLimit ? 'text-orange-500' : theme === Theme.DARK ? 'text-gray-400' : 'text-gray-500'}
+            `}>
+              {characterCount}/{maxLength}
+            </div>
+          )}
+        </div>
+
+        {/* Voice/Send Button */}
+        <div className="flex space-x-2">
+          {/* Voice Toggle */}
+          <button
+            onClick={onVoiceModeToggle}
+            disabled={disabled}
+            className={`
+              p-2.5 sm:p-3 rounded-xl transition-all duration-200
+              ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+              ${isVoiceMode 
+                ? 'bg-orange-500 text-white shadow-lg' 
+                : `${buttonBg} ${textColor} hover:text-orange-500`
+              }
+            `}
+            title={isVoiceMode ? "Disable voice mode" : "Enable voice mode"}
+          >
+            {isListening ? (
+              <Square size={18} />
+            ) : isVoiceMode ? (
+              <MicOff size={18} />
+            ) : (
+              <Mic size={18} />
+            )}
+          </button>
+
+          {/* Send Button */}
+          <button
+            onClick={handleSend}
+            disabled={!canSend}
+            className={`
+              p-2.5 sm:p-3 rounded-xl transition-all duration-200
+              ${canSend 
+                ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-lg transform hover:scale-105' 
+                : `${buttonBg} opacity-50 cursor-not-allowed ${theme === Theme.DARK ? 'text-gray-400' : 'text-gray-500'}`
+              }
+            `}
+            title="Send message (Enter)"
+          >
+            {disabled ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Send size={18} />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Hidden File Input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        onChange={handleFileSelect}
+        className="hidden"
+        accept="image/*,.pdf,.doc,.docx,.txt,video/*"
+      />
+
+      {/* Quick Actions (Mobile) */}
+      <div className="sm:hidden mt-3 flex justify-center space-x-4">
+        <button
+          onClick={() => setMessage(prev => prev + '👍')}
+          className={`p-2 rounded-lg ${buttonBg} transition-colors`}
         >
-          {isPanelVoiceActive ? <MicOff size={18} /> : (messageInput.trim() === '' && inputMode === 'text' && !isAiThinking ? <Mic size={18} /> : <Send size={18} />)}
+          <Smile size={16} className="text-orange-500" />
         </button>
       </div>
     </div>
   );
 };
+
+export default InteractionInputBar;

@@ -1,66 +1,167 @@
 
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { cn } from '../lib/utils';
+import { useTheme } from '../contexts/ThemeContext';
 import { Theme } from '../../types';
 import { FBC_BRAND_NAME } from '../../constants';
 
-interface FooterProps {
-  theme: Theme;
-}
+const footerLinks = [
+  {
+    title: 'Product',
+    links: [
+      { name: 'Features', href: '/features' },
+      { name: 'Pricing', href: '/pricing' },
+      { name: 'Integrations', href: '/integrations' },
+      { name: 'Updates', href: '/updates' },
+    ],
+  },
+  {
+    title: 'Resources',
+    links: [
+      { name: 'Documentation', href: '/docs' },
+      { name: 'Tutorials', href: '/tutorials' },
+      { name: 'API Reference', href: '/api' },
+      { name: 'Community', href: '/community' },
+    ],
+  },
+  {
+    title: 'Company',
+    links: [
+      { name: 'About Us', href: '/about' },
+      { name: 'Careers', href: '/careers' },
+      { name: 'Blog', href: '/blog' },
+      { name: 'Contact', href: '/contact' },
+    ],
+  },
+  {
+    title: 'Legal',
+    links: [
+      { name: 'Privacy Policy', href: '/privacy' },
+      { name: 'Terms of Service', href: '/terms' },
+      { name: 'Security', href: '/security' },
+      { name: 'Cookie Policy', href: '/cookies' },
+    ],
+  },
+];
 
-export const Footer: React.FC<FooterProps> = ({ theme }) => (
-  <footer className={`relative py-12 text-center border-t transition-all duration-300 overflow-hidden
-    ${theme === Theme.DARK 
-      ? 'bg-black/80 backdrop-blur-xl text-gray-400 border-gray-800/50' 
-      : 'bg-white/80 backdrop-blur-xl text-gray-600 border-gray-200/50'}` 
-    }>
-    
-    {/* Subtle background pattern */}
-    <div className="absolute inset-0 opacity-30">
-      <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-orange-500/20 to-transparent" />
-      <div className="absolute top-0 right-1/4 w-px h-full bg-gradient-to-b from-transparent via-orange-500/20 to-transparent" />
-    </div>
-    
-    <div className="container mx-auto px-6 relative z-10">
-      <div className="space-y-4">
-        {/* Enhanced brand mention */}
-        <div className="flex items-center justify-center space-x-2 mb-6">
-          <div className="w-8 h-px bg-gradient-to-r from-transparent to-orange-500/50" />
-          <span 
-            className="font-bold text-lg tracking-wider"
-            style={{ 
-              color: 'var(--accent-color)',
-              fontFamily: "'Space Mono', monospace"
-            }}
-          >
-            {FBC_BRAND_NAME}
-          </span>
-          <div className="w-8 h-px bg-gradient-to-l from-transparent to-orange-500/50" />
-        </div>
-        
-        {/* Copyright with enhanced styling */}
-        <p className="text-sm font-medium">
-          &copy; {new Date().getFullYear()} {FBC_BRAND_NAME} | Farzad Bayat. All Rights Reserved.
-        </p>
-        
-        {/* Tagline with subtle animation */}
-        <p className={`text-sm font-light tracking-wide transition-all duration-300 hover:scale-105
-          ${theme === Theme.DARK ? 'text-gray-500 hover:text-gray-400' : 'text-gray-500 hover:text-gray-600'}`}>
-          AI Automation Without the Hype.
-        </p>
-        
-        {/* Subtle decorative element */}
-        <div className="flex justify-center pt-4">
-          <div className="flex space-x-1">
-            {[...Array(3)].map((_, i) => (
-              <div 
-                key={i}
-                className="w-1 h-1 rounded-full bg-orange-500/40 animate-pulse"
-                style={{ animationDelay: `${i * 0.2}s` }}
-              />
-            ))}
+const socialLinks = [
+  { name: 'GitHub', href: 'https://github.com', icon: 'github' },
+  { name: 'Twitter', href: 'https://twitter.com', icon: 'twitter' },
+  { name: 'LinkedIn', href: 'https://linkedin.com', icon: 'linkedin' },
+  { name: 'Discord', href: 'https://discord.com', icon: 'message-circle' },
+];
+
+export function Footer() {
+  const { theme } = useTheme();
+  const currentYear = new Date().getFullYear();
+
+  return (
+    <footer className={cn(
+      'border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60',
+      'transition-colors duration-300',
+      theme === Theme.DARK ? 'border-gray-800' : 'border-gray-200'
+    )}>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Main Footer Content */}
+        <div className="py-12 md:py-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-12">
+            {/* Brand and tagline */}
+            <div className="lg:col-span-2 space-y-4">
+              <Link to="/" className="inline-block">
+                <span className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                  {FBC_BRAND_NAME}
+                </span>
+              </Link>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Empowering developers with AI tools to build the future. Simple, powerful, and open source.
+              </p>
+              
+              {/* Social Links */}
+              <div className="flex space-x-4 pt-2">
+                {socialLinks.map((social) => (
+                  <a
+                    key={social.name}
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label={`${social.name} (opens in new tab)`}
+                  >
+                    <span className="sr-only">{social.name}</span>
+                    <div className="h-5 w-5">
+                      {/* Icon would be rendered here based on social.icon */}
+                      <div className="h-full w-full bg-current opacity-70 hover:opacity-100 rounded" />
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer Links */}
+            <div className="grid grid-cols-2 gap-8 sm:grid-cols-2 lg:col-span-3 lg:grid-cols-4">
+              {footerLinks.map((section) => (
+                <div key={section.title}>
+                  <h3 className="text-sm font-semibold text-foreground mb-4">
+                    {section.title}
+                  </h3>
+                  <ul className="space-y-3">
+                    {section.links.map((link) => (
+                      <li key={link.name}>
+                        <Link
+                          to={link.href}
+                          className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-block"
+                        >
+                          {link.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div 
+            className={cn(
+              'my-8 h-px w-full',
+              theme === Theme.DARK ? 'bg-gray-800' : 'bg-gray-200'
+            )} 
+            aria-hidden="true"
+          />
+
+          {/* Bottom Bar */}
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-sm text-muted-foreground text-center md:text-left">
+              &copy; {currentYear} {FBC_BRAND_NAME}. All rights reserved.
+            </p>
+            
+            <div className="flex items-center space-x-6">
+              <Link 
+                to="/privacy" 
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Privacy Policy
+              </Link>
+              <Link 
+                to="/terms" 
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Terms of Service
+              </Link>
+              <Link 
+                to="/cookies" 
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Cookie Policy
+              </Link>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </footer>
-);
+    </footer>
+  );
+}
+
+export default Footer;

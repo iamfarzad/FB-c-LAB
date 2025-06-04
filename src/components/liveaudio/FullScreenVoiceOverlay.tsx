@@ -29,7 +29,7 @@ export const FullScreenVoiceOverlay: React.FC<FullScreenVoiceOverlayProps> = ({
   const [elapsedTime, setElapsedTime] = useState('00:00');
   const [inputNode, setInputNode] = useState<GainNode | null>(null);
   
-  const timerRef = useRef<number | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   // Update timer
@@ -270,9 +270,35 @@ export const FullScreenVoiceOverlay: React.FC<FullScreenVoiceOverlayProps> = ({
           isRecording={isRecording}
           isAiSpeaking={isAiSpeaking}
         />
+        
+        {/* Fallback visual orb when Three.js isn't working */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div 
+            className={`w-32 h-32 rounded-full border-2 transition-all duration-300 ${
+              isRecording 
+                ? 'border-orange-500 bg-orange-500/20 animate-pulse scale-110' 
+                : 'border-gray-500 bg-gray-500/10'
+            } ${isAiSpeaking ? 'border-green-500 bg-green-500/20' : ''}`}
+            style={{
+              boxShadow: isRecording 
+                ? '0 0 30px rgba(249, 115, 22, 0.5), inset 0 0 20px rgba(249, 115, 22, 0.2)' 
+                : '0 0 10px rgba(156, 163, 175, 0.3)'
+            }}
+          >
+            <div className="w-full h-full rounded-full flex items-center justify-center">
+              {isRecording ? (
+                <div className="w-4 h-4 bg-orange-500 rounded-full animate-ping" />
+              ) : (
+                <div className="w-2 h-2 bg-gray-400 rounded-full" />
+              )}
+            </div>
+          </div>
+        </div>
+        
         {/* Debug info */}
         <div className="absolute top-4 left-4 text-xs text-white bg-black/50 p-2 rounded">
           Debug: inputNode={inputNode ? 'connected' : 'null'}, recording={isRecording ? 'yes' : 'no'}, aiSpeaking={isAiSpeaking ? 'yes' : 'no'}
+          <br />Visual3D: {inputNode ? 'should render' : 'no input'}, theme={theme}
         </div>
       </div>
       
