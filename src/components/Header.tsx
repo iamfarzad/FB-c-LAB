@@ -12,246 +12,96 @@ interface HeaderProps {
   isChatOpen: boolean;      
 }
 
-// Redesigned Tech/AI-focused FBC Logo Component
+// Clean, Modern Tech Logo Component
 const TechFBCLogo: React.FC<{ theme: Theme }> = ({ theme }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const [particleOpacity, setParticleOpacity] = useState(0);
-  const [glitchActive, setGlitchActive] = useState(false);
-  const logoRef = useRef<HTMLDivElement>(null);
   
-  // Generate particles on mount and handle hover animation
-  useEffect(() => {
-    setParticleOpacity(0.6);
-    
-    // Occasional glitch effect
-    const glitchInterval = setInterval(() => {
-      if (Math.random() > 0.85) {
-        setGlitchActive(true);
-        setTimeout(() => setGlitchActive(false), 150);
-      }
-    }, 4000);
-    
-    return () => clearInterval(glitchInterval);
-  }, []);
-
-  const handleMouseEnter = () => {
-    setIsHovered(true);
-    // Random glitch on hover
-    if (Math.random() > 0.5) {
-      setGlitchActive(true);
-      setTimeout(() => setGlitchActive(false), 150);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-  };
-
-  // Dynamic styles based on theme
+  // Clean color scheme
   const primaryColor = theme === Theme.DARK ? '#f97316' : '#ea580c';
-  const secondaryColor = theme === Theme.DARK ? '#fb923c' : '#f97316';
-  const textColor = theme === Theme.DARK ? '#ffffff' : '#1c1917';
-  const glowColor = theme === Theme.DARK 
-    ? '0 0 15px rgba(249, 115, 22, 0.6), 0 0 30px rgba(249, 115, 22, 0.3)' 
-    : '0 0 10px rgba(249, 115, 22, 0.3)';
-  const bgColor = theme === Theme.DARK ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.4)';
+  const textColor = theme === Theme.DARK ? '#ffffff' : '#1f2937';
+  const subtleAccent = theme === Theme.DARK ? '#fb923c' : '#f97316';
 
   return (
     <div 
-      ref={logoRef}
       className="relative group cursor-pointer select-none"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Particle background effect */}
-      <div 
-        className="absolute -inset-3 rounded-lg transition-opacity duration-500"
-        style={{ 
-          opacity: isHovered ? 0.8 : 0.2,
-          background: `radial-gradient(circle at center, ${primaryColor}10 0%, transparent 70%)`,
-        }}
-      >
-        {/* Dynamic particles */}
-        {[...Array(15)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute rounded-full transition-all duration-700"
-            style={{
-              width: 2 + Math.random() * 4 + 'px',
-              height: 2 + Math.random() * 4 + 'px',
-              backgroundColor: i % 2 === 0 ? primaryColor : secondaryColor,
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              opacity: particleOpacity * (0.3 + Math.random() * 0.7),
-              transform: `scale(${isHovered ? (1 + Math.random()) : 0.8})`,
-              filter: `blur(${Math.random() * 1}px)`,
-              boxShadow: isHovered ? `0 0 ${5 + Math.random() * 5}px ${primaryColor}` : 'none',
-              animation: `float-${i} ${3 + Math.random() * 5}s ease-in-out infinite alternate`
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Logo container with glassmorphism effect */}
-      <div 
-        className={`relative flex items-center justify-center px-3 py-2 rounded-lg overflow-hidden transition-all duration-300
-          ${isHovered ? 'scale-105' : 'scale-100'}`}
-        style={{ 
-          background: isHovered ? bgColor : 'transparent',
-          backdropFilter: isHovered ? 'blur(8px)' : 'none',
-          border: isHovered ? `1px solid ${primaryColor}30` : 'none',
-        }}
-      >
-        {/* Animated highlight effect */}
-        <div 
-          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-          style={{
-            background: `linear-gradient(45deg, transparent, ${primaryColor}20, transparent)`,
-            backgroundSize: '200% 200%',
-            animation: 'shimmer 2s ease-in-out infinite'
-          }}
-        />
-        
-        {/* Logo content */}
-        <div className="relative flex items-center">
-          {/* Hexagon icon */}
+      <div className="flex items-center space-x-3">
+        {/* Modern geometric icon */}
+        <div className="relative">
           <div 
-            className={`relative mr-2 transition-transform duration-300 ${isHovered ? 'rotate-[30deg]' : ''}`}
-            style={{ height: '28px', width: '24px' }}
+            className={`w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center
+              ${isHovered ? 'scale-110 rotate-3' : 'scale-100'}`}
+            style={{
+              background: `linear-gradient(135deg, ${primaryColor}, ${subtleAccent})`,
+              boxShadow: isHovered 
+                ? `0 8px 25px ${primaryColor}40, 0 0 0 1px ${primaryColor}20` 
+                : `0 2px 8px ${primaryColor}20`
+            }}
           >
-            <svg 
-              viewBox="0 0 24 28" 
-              fill="none" 
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-full h-full"
-            >
-              <path 
-                d="M12 0L24 7V21L12 28L0 21V7L12 0Z" 
-                fill={isHovered ? primaryColor : 'none'}
-                stroke={primaryColor}
-                strokeWidth="1.5"
-                className="transition-all duration-300"
+            {/* Clean geometric pattern */}
+            <div className="relative w-4 h-4">
+              <div 
+                className="absolute inset-0 border-2 border-white/90 rounded-sm transform rotate-45"
                 style={{
-                  filter: isHovered ? `drop-shadow(0 0 3px ${primaryColor})` : 'none'
+                  borderColor: theme === Theme.DARK ? '#ffffff' : '#ffffff',
                 }}
               />
-              <path 
-                d="M12 4L18 7.5V14.5L12 18L6 14.5V7.5L12 4Z" 
-                fill={secondaryColor}
-                className="transition-all duration-300"
+              <div 
+                className="absolute top-1/2 left-1/2 w-1.5 h-1.5 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2"
                 style={{
-                  opacity: isHovered ? 1 : 0.8,
-                  transform: glitchActive ? 'translateX(1px)' : 'none',
-                  transformOrigin: 'center'
+                  backgroundColor: theme === Theme.DARK ? '#ffffff' : '#ffffff',
                 }}
               />
-              <circle 
-                cx="12" 
-                cy="11" 
-                r="2" 
-                fill={textColor}
-                className="transition-all duration-300"
-                style={{
-                  opacity: isHovered ? 1 : 0.9,
-                  transform: isHovered ? 'scale(1.2)' : 'scale(1)',
-                  transformOrigin: 'center'
-                }}
-              />
-            </svg>
+            </div>
           </div>
           
-          {/* Text part */}
-          <div className="flex flex-col">
-            {/* Main text with glitch effect */}
+          {/* Subtle glow effect on hover */}
+          {isHovered && (
             <div 
-              className="relative font-mono font-bold text-xl tracking-wider"
-              style={{ 
-                color: textColor,
-                textShadow: isHovered ? glowColor : 'none',
-                transition: 'text-shadow 0.3s ease'
+              className="absolute inset-0 w-8 h-8 rounded-lg animate-pulse"
+              style={{
+                background: `radial-gradient(circle, ${primaryColor}30 0%, transparent 70%)`,
+                filter: 'blur(4px)',
               }}
-            >
-              {/* Glitch layers */}
-              {glitchActive && (
-                <>
-                  <span 
-                    className="absolute inset-0 text-red-500 opacity-70"
-                    style={{ transform: 'translate(-2px, -1px)' }}
-                  >
-                    FBC
-                  </span>
-                  <span 
-                    className="absolute inset-0 text-cyan-500 opacity-70"
-                    style={{ transform: 'translate(2px, 1px)' }}
-                  >
-                    FBC
-                  </span>
-                </>
-              )}
-              
-              {/* Main text */}
-              <span className="relative z-10">
-                FB
-                <span 
-                  style={{ 
-                    color: primaryColor,
-                    textShadow: isHovered ? `0 0 8px ${primaryColor}` : 'none',
-                    transition: 'all 0.3s ease'
-                  }}
-                >
-                  C
-                </span>
-              </span>
-            </div>
-            
-            {/* Tagline with reveal animation */}
-            <div 
-              className="overflow-hidden h-4"
-              style={{ width: isHovered ? '100%' : '0%', transition: 'width 0.3s ease' }}
-            >
-              <span 
-                className="text-[10px] font-medium tracking-wider uppercase"
-                style={{ 
-                  color: secondaryColor,
-                  opacity: isHovered ? 1 : 0,
-                  transition: 'opacity 0.3s ease',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                tech solutions
-              </span>
-            </div>
-          </div>
+            />
+          )}
         </div>
         
-        {/* Animated border effect */}
-        <div 
-          className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-          style={{
-            border: `1px solid ${primaryColor}40`,
-            boxShadow: `inset 0 0 20px ${primaryColor}20`
-          }}
-        />
+        {/* Clean typography */}
+        <div className="flex flex-col">
+          <div 
+            className="font-bold text-xl tracking-tight transition-all duration-300"
+            style={{ 
+              color: textColor,
+              transform: isHovered ? 'translateX(2px)' : 'translateX(0)',
+            }}
+          >
+            <span>FB</span>
+            <span style={{ color: primaryColor }}>C</span>
+          </div>
+          
+          {/* Subtle tagline */}
+          <div 
+            className={`text-xs font-medium tracking-wide uppercase transition-all duration-300 overflow-hidden
+              ${isHovered ? 'opacity-100 max-h-4' : 'opacity-60 max-h-3'}`}
+            style={{ 
+              color: subtleAccent,
+              fontSize: '9px',
+              letterSpacing: '0.05em'
+            }}
+          >
+            Tech Solutions
+          </div>
+        </div>
       </div>
-
-      {/* Animated keyframes for floating particles */}
-      <style jsx>{`
-        @keyframes float-0 { 0% { transform: translate(0, 0); } 100% { transform: translate(5px, -5px); } }
-        @keyframes float-1 { 0% { transform: translate(0, 0); } 100% { transform: translate(-7px, 3px); } }
-        @keyframes float-2 { 0% { transform: translate(0, 0); } 100% { transform: translate(3px, 8px); } }
-        @keyframes float-3 { 0% { transform: translate(0, 0); } 100% { transform: translate(-5px, -5px); } }
-        @keyframes float-4 { 0% { transform: translate(0, 0); } 100% { transform: translate(6px, 2px); } }
-        @keyframes float-5 { 0% { transform: translate(0, 0); } 100% { transform: translate(-3px, 6px); } }
-        @keyframes float-6 { 0% { transform: translate(0, 0); } 100% { transform: translate(7px, -3px); } }
-        @keyframes float-7 { 0% { transform: translate(0, 0); } 100% { transform: translate(-6px, -2px); } }
-        @keyframes float-8 { 0% { transform: translate(0, 0); } 100% { transform: translate(4px, 5px); } }
-        @keyframes float-9 { 0% { transform: translate(0, 0); } 100% { transform: translate(-4px, -7px); } }
-        @keyframes float-10 { 0% { transform: translate(0, 0); } 100% { transform: translate(5px, 4px); } }
-        @keyframes float-11 { 0% { transform: translate(0, 0); } 100% { transform: translate(-3px, -6px); } }
-        @keyframes float-12 { 0% { transform: translate(0, 0); } 100% { transform: translate(6px, -4px); } }
-        @keyframes float-13 { 0% { transform: translate(0, 0); } 100% { transform: translate(-5px, 3px); } }
-        @keyframes float-14 { 0% { transform: translate(0, 0); } 100% { transform: translate(3px, -5px); } }
-      `}</style>
+      
+      {/* Clean hover indicator */}
+      <div 
+        className={`absolute -bottom-1 left-0 h-0.5 bg-gradient-to-r from-transparent via-orange-500 to-transparent
+          transition-all duration-300 rounded-full ${isHovered ? 'w-full opacity-100' : 'w-0 opacity-0'}`}
+      />
     </div>
   );
 };
