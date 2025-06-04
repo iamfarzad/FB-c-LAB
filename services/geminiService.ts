@@ -19,25 +19,102 @@ interface ProxyResponse {
 // Serverless proxy configuration
 const PROXY_ENDPOINT = '/api/gemini-proxy'; // Your serverless function endpoint
 
-// Base system instruction for the AI assistant
-const getBaseSystemInstruction = (): string => {
-  return `You are ${AI_ASSISTANT_NAME}, an AI assistant for ${FBC_BRAND_NAME}. 
-  
-  Your role is to help visitors understand Farzad's expertise in AI consulting, development, and workshops. You should:
-  
-  1. Be professional, knowledgeable, and helpful
-  2. Focus on Farzad's AI expertise and services
-  3. Ask qualifying questions when appropriate: ${QUALIFICATION_QUESTIONS.join(', ')}
-  4. Reference relevant information from the knowledge base when helpful
-  5. Guide conversations toward scheduling consultations or workshops
-  6. Be concise but thorough in your responses
-  
-  Knowledge Base: ${SIMULATED_KNOWLEDGE_BASE}
-  
-  Always maintain a professional tone while being approachable and helpful.`;
+// Development fallback - check if we can use direct API
+const isDevelopment = import.meta.env.DEV;
+const hasDirectApiKey = import.meta.env.VITE_API_KEY || import.meta.env.GEMINI_API_KEY_SERVER;
+
+// Import Google AI for development fallback
+let GoogleGenerativeAI: any = null;
+let isGoogleAILoaded = false;
+
+const loadGoogleAI = async () => {
+  if (!GoogleGenerativeAI && isDevelopment && hasDirectApiKey) {
+    try {
+      const module = await import('@google/generative-ai');
+      GoogleGenerativeAI = module.GoogleGenerativeAI;
+      isGoogleAILoaded = true;
+      console.log('Google AI SDK loaded for development fallback');
+    } catch (error) {
+      console.warn('Google AI SDK not available for development fallback:', error);
+    }
+  }
 };
 
-// Utility function to make proxy requests
+// Development fallback function
+const makeDirectApiCall = async (action: string, data: any): Promise<ProxyResponse> => {
+  // Load Google AI SDK if not already loaded
+  if (!isGoogleAILoaded) {
+    await loadGoogleAI();
+  }
+  
+  if (!GoogleGenerativeAI || !hasDirectApiKey) {
+    return {
+      success: false,
+      error: 'Development fallback not available - deploy to test proxy'
+    };
+  }
+
+  try {
+    const genAI = new GoogleGenerativeAI(import.meta.env.VITE_API_KEY || import.meta.env.GEMINI_API_KEY_SERVER);
+    
+    switch (action) {
+      case 'generate': {
+        const model = genAI.getGenerativeModel({
+          model: data.model || 'gemini-2.0-flash-001',
+          systemInstruction: data.systemInstruction,
+          tools: [{ googleSearchRetrieval: {} }],
+        });
+        const result = await model.generateContent(data.prompt);
+        const response = await result.response;
+        return {
+          success: true,
+          data: {
+            text: response.text(),
+            sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks
+              ?.map((chunk: any) => chunk.web && ({ uri: chunk.web.uri, title: chunk.web.title }))
+              .filter(Boolean) || []
+          }
+        };
+      }
+      case 'analyze-image': {
+        const model = genAI.getGenerativeModel({ model: data.model || 'gemini-2.0-flash-001' });
+        const imagePart = {
+          inlineData: {
+            mimeType: data.mimeType || 'image/jpeg',
+            data: data.image
+          }
+        };
+        const textPart = { text: data.prompt || 'Describe this image' };
+        const result = await model.generateContent([textPart, imagePart]);
+        const response = await result.response;
+        return {
+          success: true,
+          data: { text: response.text() }
+        };
+      }
+      case 'health': {
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-001' });
+        await model.generateContent('Hello');
+        return {
+          success: true,
+          data: { status: 'healthy', timestamp: new Date().toISOString() }
+        };
+      }
+      default:
+        return {
+          success: false,
+          error: 'Unsupported action in development fallback'
+        };
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Development fallback error'
+    };
+  }
+};
+
+// Utility function to make proxy requests with development fallback
 const makeProxyRequest = async (endpoint: string, data: any): Promise<ProxyResponse> => {
   try {
     const response = await fetch(`${PROXY_ENDPOINT}${endpoint}`, {
@@ -54,12 +131,37 @@ const makeProxyRequest = async (endpoint: string, data: any): Promise<ProxyRespo
 
     return await response.json();
   } catch (error) {
-    console.error('Proxy request failed:', error);
+    console.warn('Proxy request failed, trying development fallback:', error);
+    
+    // Try development fallback
+    if (isDevelopment && hasDirectApiKey) {
+      const action = endpoint.replace('/', '');
+      return await makeDirectApiCall(action, data);
+    }
+    
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred'
     };
   }
+};
+
+// Base system instruction for the AI assistant
+const getBaseSystemInstruction = (): string => {
+  return `You are ${AI_ASSISTANT_NAME}, an AI assistant for ${FBC_BRAND_NAME}. 
+  
+  Your role is to help visitors understand Farzad's expertise in AI consulting, development, and workshops. You should:
+  
+  1. Be professional, knowledgeable, and helpful
+  2. Focus on Farzad's AI expertise and services
+  3. Ask qualifying questions when appropriate: ${QUALIFICATION_QUESTIONS.join(', ')}
+  4. Reference relevant information from the knowledge base when helpful
+  5. Guide conversations toward scheduling consultations or workshops
+  6. Be concise but thorough in your responses
+  
+  Knowledge Base: ${SIMULATED_KNOWLEDGE_BASE}
+  
+  Always maintain a professional tone while being approachable and helpful.`;
 };
 
 // Chat session management (simplified for proxy)
@@ -279,7 +381,7 @@ export const stopAudioStream = (): void => {
   }
 };
 
-// Check proxy health
+// Check proxy health with development fallback
 export const checkProxyHealth = async (): Promise<boolean> => {
   try {
     const response = await fetch(`${PROXY_ENDPOINT}/health`, {
@@ -287,13 +389,25 @@ export const checkProxyHealth = async (): Promise<boolean> => {
     });
     
     if (!response.ok) {
-      return false;
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
     
     const result = await response.json();
     return result.success === true;
   } catch (error) {
-    console.error('Proxy health check failed:', error);
+    console.warn('Proxy health check failed, trying development fallback:', error);
+    
+    // Try development fallback
+    if (isDevelopment && hasDirectApiKey) {
+      try {
+        const result = await makeDirectApiCall('health', {});
+        return result.success === true;
+      } catch (fallbackError) {
+        console.error('Development fallback health check failed:', fallbackError);
+        return false;
+      }
+    }
+    
     return false;
   }
 };

@@ -319,7 +319,7 @@ export const FullScreenVoiceOverlay: React.FC<FullScreenVoiceOverlayProps> = ({
           <div className="flex items-center justify-center space-x-6 mb-6">
             <button
               onClick={handleToggleRecording}
-              className={`relative w-16 h-16 border transition-all duration-300 ${
+              className={`relative w-16 h-16 rounded-full border transition-all duration-300 ${
                 isRecording 
                   ? 'border-orange-500 bg-orange-500/10 hover:bg-orange-500/20' 
                   : 'border-white/20 hover:border-orange-500 hover:bg-orange-500/10'
@@ -337,7 +337,7 @@ export const FullScreenVoiceOverlay: React.FC<FullScreenVoiceOverlayProps> = ({
 
             <button
               onClick={handleClearTranscripts}
-              className={`px-4 py-2 border text-sm transition-all duration-300 ${
+              className={`px-4 py-2 rounded border text-sm transition-all duration-300 ${
                 theme === Theme.DARK 
                   ? 'border-white/10 hover:border-white/20 text-gray-400 hover:text-white' 
                   : 'border-black/10 hover:border-black/20 text-gray-600 hover:text-black'
