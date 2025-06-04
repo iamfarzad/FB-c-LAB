@@ -1,0 +1,616 @@
+
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Sun, Moon, MessageSquare, Menu, X, Search, ChevronRight } from 'lucide-react'; 
+import { Theme } from '../../types';
+import { FBC_BRAND_NAME } from '../../constants';
+
+interface HeaderProps {
+  theme: Theme;
+  onToggleTheme: () => void;
+  onToggleChat: () => void; 
+  isChatOpen: boolean;      
+}
+
+// Redesigned Tech/AI-focused FBC Logo Component
+const TechFBCLogo: React.FC<{ theme: Theme }> = ({ theme }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [particleOpacity, setParticleOpacity] = useState(0);
+  const [glitchActive, setGlitchActive] = useState(false);
+  const logoRef = useRef<HTMLDivElement>(null);
+  
+  // Generate particles on mount and handle hover animation
+  useEffect(() => {
+    setParticleOpacity(0.6);
+    
+    // Occasional glitch effect
+    const glitchInterval = setInterval(() => {
+      if (Math.random() > 0.85) {
+        setGlitchActive(true);
+        setTimeout(() => setGlitchActive(false), 150);
+      }
+    }, 4000);
+    
+    return () => clearInterval(glitchInterval);
+  }, []);
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    // Random glitch on hover
+    if (Math.random() > 0.5) {
+      setGlitchActive(true);
+      setTimeout(() => setGlitchActive(false), 150);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+  };
+
+  // Dynamic styles based on theme
+  const primaryColor = theme === Theme.DARK ? '#f97316' : '#ea580c';
+  const secondaryColor = theme === Theme.DARK ? '#fb923c' : '#f97316';
+  const textColor = theme === Theme.DARK ? '#ffffff' : '#1c1917';
+  const glowColor = theme === Theme.DARK 
+    ? '0 0 15px rgba(249, 115, 22, 0.6), 0 0 30px rgba(249, 115, 22, 0.3)' 
+    : '0 0 10px rgba(249, 115, 22, 0.3)';
+  const bgColor = theme === Theme.DARK ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.4)';
+
+  return (
+    <div 
+      ref={logoRef}
+      className="relative group cursor-pointer select-none"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* Particle background effect */}
+      <div 
+        className="absolute -inset-3 rounded-lg transition-opacity duration-500"
+        style={{ 
+          opacity: isHovered ? 0.8 : 0.2,
+          background: `radial-gradient(circle at center, ${primaryColor}10 0%, transparent 70%)`,
+        }}
+      >
+        {/* Dynamic particles */}
+        {[...Array(15)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full transition-all duration-700"
+            style={{
+              width: 2 + Math.random() * 4 + 'px',
+              height: 2 + Math.random() * 4 + 'px',
+              backgroundColor: i % 2 === 0 ? primaryColor : secondaryColor,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              opacity: particleOpacity * (0.3 + Math.random() * 0.7),
+              transform: `scale(${isHovered ? (1 + Math.random()) : 0.8})`,
+              filter: `blur(${Math.random() * 1}px)`,
+              boxShadow: isHovered ? `0 0 ${5 + Math.random() * 5}px ${primaryColor}` : 'none',
+              animation: `float-${i} ${3 + Math.random() * 5}s ease-in-out infinite alternate`
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Logo container with glassmorphism effect */}
+      <div 
+        className={`relative flex items-center justify-center px-3 py-2 rounded-lg overflow-hidden transition-all duration-300
+          ${isHovered ? 'scale-105' : 'scale-100'}`}
+        style={{ 
+          background: isHovered ? bgColor : 'transparent',
+          backdropFilter: isHovered ? 'blur(8px)' : 'none',
+          border: isHovered ? `1px solid ${primaryColor}30` : 'none',
+        }}
+      >
+        {/* Animated highlight effect */}
+        <div 
+          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+          style={{
+            background: `linear-gradient(45deg, transparent, ${primaryColor}20, transparent)`,
+            backgroundSize: '200% 200%',
+            animation: 'shimmer 2s ease-in-out infinite'
+          }}
+        />
+        
+        {/* Logo content */}
+        <div className="relative flex items-center">
+          {/* Hexagon icon */}
+          <div 
+            className={`relative mr-2 transition-transform duration-300 ${isHovered ? 'rotate-[30deg]' : ''}`}
+            style={{ height: '28px', width: '24px' }}
+          >
+            <svg 
+              viewBox="0 0 24 28" 
+              fill="none" 
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-full h-full"
+            >
+              <path 
+                d="M12 0L24 7V21L12 28L0 21V7L12 0Z" 
+                fill={isHovered ? primaryColor : 'none'}
+                stroke={primaryColor}
+                strokeWidth="1.5"
+                className="transition-all duration-300"
+                style={{
+                  filter: isHovered ? `drop-shadow(0 0 3px ${primaryColor})` : 'none'
+                }}
+              />
+              <path 
+                d="M12 4L18 7.5V14.5L12 18L6 14.5V7.5L12 4Z" 
+                fill={secondaryColor}
+                className="transition-all duration-300"
+                style={{
+                  opacity: isHovered ? 1 : 0.8,
+                  transform: glitchActive ? 'translateX(1px)' : 'none',
+                  transformOrigin: 'center'
+                }}
+              />
+              <circle 
+                cx="12" 
+                cy="11" 
+                r="2" 
+                fill={textColor}
+                className="transition-all duration-300"
+                style={{
+                  opacity: isHovered ? 1 : 0.9,
+                  transform: isHovered ? 'scale(1.2)' : 'scale(1)',
+                  transformOrigin: 'center'
+                }}
+              />
+            </svg>
+          </div>
+          
+          {/* Text part */}
+          <div className="flex flex-col">
+            {/* Main text with glitch effect */}
+            <div 
+              className="relative font-mono font-bold text-xl tracking-wider"
+              style={{ 
+                color: textColor,
+                textShadow: isHovered ? glowColor : 'none',
+                transition: 'text-shadow 0.3s ease'
+              }}
+            >
+              {/* Glitch layers */}
+              {glitchActive && (
+                <>
+                  <span 
+                    className="absolute inset-0 text-red-500 opacity-70"
+                    style={{ transform: 'translate(-2px, -1px)' }}
+                  >
+                    FBC
+                  </span>
+                  <span 
+                    className="absolute inset-0 text-cyan-500 opacity-70"
+                    style={{ transform: 'translate(2px, 1px)' }}
+                  >
+                    FBC
+                  </span>
+                </>
+              )}
+              
+              {/* Main text */}
+              <span className="relative z-10">
+                FB
+                <span 
+                  style={{ 
+                    color: primaryColor,
+                    textShadow: isHovered ? `0 0 8px ${primaryColor}` : 'none',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  C
+                </span>
+              </span>
+            </div>
+            
+            {/* Tagline with reveal animation */}
+            <div 
+              className="overflow-hidden h-4"
+              style={{ width: isHovered ? '100%' : '0%', transition: 'width 0.3s ease' }}
+            >
+              <span 
+                className="text-[10px] font-medium tracking-wider uppercase"
+                style={{ 
+                  color: secondaryColor,
+                  opacity: isHovered ? 1 : 0,
+                  transition: 'opacity 0.3s ease',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                tech solutions
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        {/* Animated border effect */}
+        <div 
+          className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+          style={{
+            border: `1px solid ${primaryColor}40`,
+            boxShadow: `inset 0 0 20px ${primaryColor}20`
+          }}
+        />
+      </div>
+
+      {/* Animated keyframes for floating particles */}
+      <style jsx>{`
+        @keyframes float-0 { 0% { transform: translate(0, 0); } 100% { transform: translate(5px, -5px); } }
+        @keyframes float-1 { 0% { transform: translate(0, 0); } 100% { transform: translate(-7px, 3px); } }
+        @keyframes float-2 { 0% { transform: translate(0, 0); } 100% { transform: translate(3px, 8px); } }
+        @keyframes float-3 { 0% { transform: translate(0, 0); } 100% { transform: translate(-5px, -5px); } }
+        @keyframes float-4 { 0% { transform: translate(0, 0); } 100% { transform: translate(6px, 2px); } }
+        @keyframes float-5 { 0% { transform: translate(0, 0); } 100% { transform: translate(-3px, 6px); } }
+        @keyframes float-6 { 0% { transform: translate(0, 0); } 100% { transform: translate(7px, -3px); } }
+        @keyframes float-7 { 0% { transform: translate(0, 0); } 100% { transform: translate(-6px, -2px); } }
+        @keyframes float-8 { 0% { transform: translate(0, 0); } 100% { transform: translate(4px, 5px); } }
+        @keyframes float-9 { 0% { transform: translate(0, 0); } 100% { transform: translate(-4px, -7px); } }
+        @keyframes float-10 { 0% { transform: translate(0, 0); } 100% { transform: translate(5px, 4px); } }
+        @keyframes float-11 { 0% { transform: translate(0, 0); } 100% { transform: translate(-3px, -6px); } }
+        @keyframes float-12 { 0% { transform: translate(0, 0); } 100% { transform: translate(6px, -4px); } }
+        @keyframes float-13 { 0% { transform: translate(0, 0); } 100% { transform: translate(-5px, 3px); } }
+        @keyframes float-14 { 0% { transform: translate(0, 0); } 100% { transform: translate(3px, -5px); } }
+      `}</style>
+    </div>
+  );
+};
+
+// New component for enhanced nav links
+const EnhancedNavLink: React.FC<{
+  to: string;
+  text: string;
+  theme: Theme;
+  isActive: boolean;
+  onClick?: () => void;
+}> = ({ to, text, theme, isActive, onClick }) => {
+  const navLinkText = theme === Theme.DARK ? 'text-gray-300' : 'text-gray-600';
+  const navLinkHoverBg = theme === Theme.DARK ? 'hover:bg-gray-800/60' : 'hover:bg-gray-100/60';
+  const activeClasses = isActive ? 
+    (theme === Theme.DARK ? 'bg-gray-800/80 text-orange-400' : 'bg-gray-100/80 text-orange-600') : '';
+
+  return (
+    <Link
+      to={to}
+      onClick={onClick}
+      className={`relative px-3 py-2.5 rounded-lg text-xs lg:text-sm font-medium transition-all duration-300 whitespace-nowrap
+        ${navLinkText} ${navLinkHoverBg} hover:scale-105 backdrop-blur-sm
+        group overflow-hidden ${activeClasses}`}
+    >
+      <span className="relative z-10">{text}</span>
+      
+      {/* Enhanced hover gradient */}
+      <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 via-orange-400/20 to-orange-500/20 
+        opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" 
+        style={{
+          backgroundSize: '200% 100%',
+          animation: 'gradient-shift 3s ease infinite'
+        }}
+      />
+      
+      {/* Enhanced underline effect */}
+      <div className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-gradient-to-r from-orange-400 to-orange-600
+        group-hover:w-full group-hover:left-0 transition-all duration-300 rounded-full"
+        style={{
+          boxShadow: theme === Theme.DARK 
+            ? '0 0 8px rgba(249, 115, 22, 0.5)' 
+            : '0 0 5px rgba(249, 115, 22, 0.3)'
+        }}
+      />
+      
+      {/* Active indicator dot */}
+      {isActive && (
+        <div className="absolute -right-0.5 -top-0.5 w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"
+          style={{
+            boxShadow: '0 0 5px rgba(249, 115, 22, 0.8)'
+          }}
+        />
+      )}
+    </Link>
+  );
+};
+
+export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleChat, isChatOpen }) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const location = useLocation();
+
+  const navLinks = [
+    { to: '/', text: 'Home' },
+    { to: '/services', text: 'Services' },
+    { to: '/workshop', text: 'Workshop' },
+    { to: '/about', text: 'About' },
+    { to: '/contact', text: 'Contact Us' },
+  ];
+
+  const accentColor = 'var(--accent-color)'; // Orange
+  
+  // Enhanced glassmorphism header with scroll effect
+  const headerBg = theme === Theme.DARK 
+    ? `${isScrolled ? 'bg-black/90' : 'bg-black/80'} backdrop-blur-xl border-b border-gray-800/50` 
+    : `${isScrolled ? 'bg-white/90' : 'bg-white/80'} backdrop-blur-xl border-b border-gray-200/50`;
+  
+  const headerText = theme === Theme.DARK ? 'text-white' : 'text-gray-900';
+  const navLinkText = theme === Theme.DARK ? 'text-gray-300' : 'text-gray-600';
+  const navLinkHoverBg = theme === Theme.DARK ? 'hover:bg-gray-800/60' : 'hover:bg-gray-100/60';
+
+  // Mobile menu styling with enhanced effects
+  const mobileMenuBg = theme === Theme.DARK 
+    ? 'bg-black/95 backdrop-blur-xl border-gray-800/50' 
+    : 'bg-white/95 backdrop-blur-xl border-gray-200/50';
+
+  // Handle scroll effects
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    if (isMobileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMobileMenuOpen]);
+
+  // Focus search input when opened
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
+
+  const toggleSearch = () => {
+    setIsSearchOpen(!isSearchOpen);
+  };
+
+  return (
+    <>
+      <header className={`sticky top-0 z-[60] transition-all duration-300 
+        ${headerBg} ${headerText} ${isScrolled ? 'py-2' : 'py-4'}`}>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center">
+            {/* Enhanced tech-focused brand logo */}
+            <Link to="/" className="flex-shrink-0" onClick={closeMobileMenu}>
+              <TechFBCLogo theme={theme} />
+            </Link>
+
+            {/* Desktop navigation with enhanced links */}
+            <nav className="hidden md:flex flex-grow justify-center items-center space-x-2 lg:space-x-3">
+              {navLinks.map(link => (
+                <EnhancedNavLink
+                  key={link.text}
+                  to={link.to}
+                  text={link.text}
+                  theme={theme}
+                  isActive={location.pathname === link.to}
+                />
+              ))}
+            </nav>
+
+            {/* Enhanced action buttons */}
+            <div className="flex items-center space-x-3">
+              {/* Search button */}
+              <button
+                onClick={toggleSearch}
+                className={`relative p-3 rounded-xl transition-all duration-300 flex items-center backdrop-blur-sm
+                  group hover:scale-110 active:scale-95 border
+                  ${theme === Theme.DARK 
+                    ? (isSearchOpen 
+                      ? 'bg-gray-800 text-orange-400 border-orange-500/50' 
+                      : 'text-gray-300 hover:bg-gray-800/60 border-gray-700/50')
+                    : (isSearchOpen 
+                      ? 'bg-gray-100 text-orange-600 border-orange-500/50' 
+                      : 'text-gray-700 hover:bg-gray-100/60 border-gray-200/50')
+                  }`}
+                title="Search"
+                aria-label="Search"
+              >
+                <Search size={20} className="transition-transform duration-300 group-hover:rotate-12" />
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500/10 to-orange-400/10 
+                  opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </button>
+
+              {/* Chat button with enhanced effects */}
+              <button
+                onClick={onToggleChat}
+                className={`relative p-3 rounded-xl transition-all duration-300 flex items-center backdrop-blur-sm
+                  group hover:scale-110 active:scale-95
+                  ${theme === Theme.DARK 
+                    ? (isChatOpen 
+                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25' 
+                      : 'text-gray-300 hover:bg-gray-800/60 border border-gray-700/50')
+                    : (isChatOpen 
+                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25' 
+                      : 'text-gray-700 hover:bg-gray-100/60 border border-gray-200/50')
+                  }`}
+                title={isChatOpen ? "Close AI Assistant Panel" : "Open AI Assistant Panel"}
+                aria-label={isChatOpen ? "Close AI Assistant Panel" : "Open AI Assistant Panel"}
+                aria-expanded={isChatOpen}
+              >
+                <MessageSquare size={20} className="transition-transform duration-300 group-hover:rotate-12" />
+                {isChatOpen && (
+                  <>
+                    <div className="absolute inset-0 rounded-xl bg-orange-500 animate-ping opacity-20" />
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500 to-orange-400 opacity-20 animate-pulse" />
+                  </>
+                )}
+              </button>
+
+              {/* Enhanced theme toggle with animation */}
+              <button
+                onClick={onToggleTheme}
+                className={`relative p-3 rounded-xl transition-all duration-300 backdrop-blur-sm
+                  group hover:scale-110 active:scale-95 border overflow-hidden
+                  ${theme === Theme.DARK 
+                    ? 'text-gray-300 hover:bg-gray-800/60 border-gray-700/50' 
+                    : 'text-gray-700 hover:bg-gray-100/60 border-gray-200/50'}`}
+                title="Toggle Theme"
+                aria-label="Toggle Theme"
+              >
+                <div className="transition-transform duration-500 group-hover:rotate-180">
+                  {theme === Theme.DARK ? <Sun size={20} /> : <Moon size={20} />}
+                </div>
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500/10 to-orange-400/10 
+                  opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                
+                {/* Ripple effect on click */}
+                <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
+                  <span className="absolute inset-0 transform scale-0 rounded-full bg-orange-500/20 
+                    group-active:scale-[5] group-active:opacity-0 transition-all duration-700 origin-center" />
+                </div>
+              </button>
+
+              {/* Enhanced mobile menu button */}
+              <button
+                onClick={toggleMobileMenu}
+                className={`md:hidden relative p-3 rounded-xl transition-all duration-300 backdrop-blur-sm
+                  group hover:scale-110 active:scale-95 border
+                  ${theme === Theme.DARK 
+                    ? (isMobileMenuOpen 
+                      ? 'bg-gray-800 text-orange-400 border-orange-500/50' 
+                      : 'text-gray-300 hover:bg-gray-800/60 border-gray-700/50')
+                    : (isMobileMenuOpen 
+                      ? 'bg-gray-100 text-orange-600 border-orange-500/50' 
+                      : 'text-gray-700 hover:bg-gray-100/60 border-gray-200/50')
+                  }`}
+                title="Toggle Mobile Menu"
+                aria-label="Toggle Mobile Menu"
+                aria-expanded={isMobileMenuOpen}
+              >
+                <div className="transition-transform duration-300">
+                  {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                </div>
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500/10 to-orange-400/10 
+                  opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Enhanced search bar */}
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+          isSearchOpen ? 'max-h-16 opacity-100 py-3' : 'max-h-0 opacity-0 py-0'
+        }`}>
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className={`flex items-center rounded-lg px-3 py-2 ${
+              theme === Theme.DARK ? 'bg-gray-800/80 border border-gray-700/50' : 'bg-gray-100/80 border border-gray-200/50'
+            }`}>
+              <Search size={18} className={theme === Theme.DARK ? 'text-gray-400' : 'text-gray-500'} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search..."
+                className={`ml-2 w-full bg-transparent border-none focus:outline-none focus:ring-0 ${
+                  theme === Theme.DARK ? 'text-gray-200 placeholder-gray-500' : 'text-gray-800 placeholder-gray-400'
+                }`}
+              />
+              <button 
+                onClick={toggleSearch}
+                className={`ml-2 ${theme === Theme.DARK ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Enhanced accent line with gradient and pulse effect */}
+        <div 
+          className="h-0.5 relative overflow-hidden"
+          style={{ backgroundColor: accentColor }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-orange-300 to-transparent 
+            opacity-50 animate-pulse" />
+          <div className="absolute inset-0 bg-gradient-to-r from-orange-500 via-transparent to-orange-500 
+            opacity-30 animate-gradient-shift" 
+            style={{ 
+              backgroundSize: '200% 100%',
+              animation: 'gradient-shift 3s ease infinite'
+            }}
+          />
+        </div>
+      </header>
+
+      {/* Enhanced Mobile Menu with animations */}
+      <div 
+        ref={mobileMenuRef}
+        className={`md:hidden fixed top-[${isScrolled ? '57px' : '73px'}] left-0 right-0 z-50 transform transition-all duration-300 ease-in-out border-b
+          ${isMobileMenuOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}
+          ${mobileMenuBg}`}
+      >
+        <nav className="container mx-auto px-4 py-6">
+          <div className="flex flex-col space-y-4">
+            {navLinks.map((link, index) => (
+              <EnhancedNavLink
+                key={link.text}
+                to={link.to}
+                text={link.text}
+                theme={theme}
+                isActive={location.pathname === link.to}
+                onClick={closeMobileMenu}
+              />
+            ))}
+          </div>
+        </nav>
+      </div>
+
+      {/* Enhanced mobile menu backdrop with blur */}
+      {isMobileMenuOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-40 transition-opacity duration-300"
+          onClick={closeMobileMenu}
+        />
+      )}
+
+      {/* Add enhanced keyframes */}
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        
+        @keyframes gradient-shift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+        
+        @keyframes pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
+    </>
+  );
+};

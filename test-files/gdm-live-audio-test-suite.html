@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GdmLiveAudio Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .controls {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .control-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            color: #333;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .test-categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 30px;
+        }
+        
+        .test-category {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 25px;
+            transition: all 0.3s ease;
+        }
+        
+        .test-category:hover {
+            border-color: #667eea;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+        }
+        
+        .test-category h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .test-category .icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .icon-unit { background: #3498db; }
+        .icon-integration { background: #e74c3c; }
+        .icon-browser { background: #f39c12; }
+        .icon-ui { background: #9b59b6; }
+        .icon-performance { background: #1abc9c; }
+        .icon-edge { background: #e67e22; }
+        
+        .test-category p {
+            color: #6c757d;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .test-category .btn {
+            width: 100%;
+        }
+        
+        .progress-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .progress-bar {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        
+        .results-section {
+            padding: 30px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            border-left: 4px solid;
+        }
+        
+        .log-info {
+            background: #e3f2fd;
+            border-left-color: #2196f3;
+            color: #1565c0;
+        }
+        
+        .log-success {
+            background: #e8f5e8;
+            border-left-color: #4caf50;
+            color: #2e7d32;
+        }
+        
+        .log-error {
+            background: #ffebee;
+            border-left-color: #f44336;
+            color: #c62828;
+        }
+        
+        .log-warning {
+            background: #fff3e0;
+            border-left-color: #ff9800;
+            color: #ef6c00;
+        }
+        
+        .component-status {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc3545;
+        }
+        
+        .status-indicator.ready {
+            background: #28a745;
+        }
+        
+        .status-indicator.warning {
+            background: #ffc107;
+        }
+        
+        @media (max-width: 768px) {
+            .control-group {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+            
+            .test-categories {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎤 GdmLiveAudio Test Suite</h1>
+            <p>Comprehensive testing framework for audio recording and processing components</p>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <button class="btn btn-primary" onclick="runAllTests()">🚀 Run All Tests</button>
+                <button class="btn btn-secondary" onclick="clearResults()">🗑️ Clear Results</button>
+                <button class="btn btn-warning" onclick="exportResults()">📊 Export Results</button>
+                <button class="btn btn-success" onclick="checkSystemRequirements()">🔍 System Check</button>
+            </div>
+        </div>
+        
+        <div class="component-status">
+            <h3>🔧 System Status</h3>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-indicator" id="customElementStatus"></div>
+                    <span>Custom Element Registration</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-indicator" id="audioContextStatus"></div>
+                    <span>Web Audio API</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-indicator" id="mediaStreamStatus"></div>
+                    <span>MediaStream API</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-indicator" id="secureContextStatus"></div>
+                    <span>Secure Context (HTTPS)</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-categories">
+            <div class="test-category">
+                <h3><span class="icon icon-unit">U</span>Unit Tests</h3>
+                <p>Test individual component methods, audio context initialization, WAV conversion, and error handling mechanisms.</p>
+                <button class="btn btn-primary" onclick="runUnitTests()">Run Unit Tests</button>
+            </div>
+            
+            <div class="test-category">
+                <h3><span class="icon icon-integration">I</span>Integration Tests</h3>
+                <p>Test React wrapper integration, Gemini API connectivity, event handling, and component lifecycle management.</p>
+                <button class="btn btn-primary" onclick="runIntegrationTests()">Run Integration Tests</button>
+            </div>
+            
+            <div class="test-category">
+                <h3><span class="icon icon-browser">B</span>Browser Compatibility</h3>
+                <p>Verify compatibility across Chrome, Firefox, Safari, and Edge browsers with different audio API implementations.</p>
+                <button class="btn btn-primary" onclick="runBrowserCompatibilityTests()">Run Browser Tests</button>
+            </div>
+            
+            <div class="test-category">
+                <h3><span class="icon icon-ui">UI</span>User Interface Tests</h3>
+                <p>Test visual feedback, status updates, error messages, and user interaction flows.</p>
+                <button class="btn btn-primary" onclick="runUITests()">Run UI Tests</button>
+            </div>
+            
+            <div class="test-category">
+                <h3><span class="icon icon-performance">P</span>Performance Tests</h3>
+                <p>Measure memory usage, CPU performance, audio processing latency, and responsiveness under load.</p>
+                <button class="btn btn-primary" onclick="runPerformanceTests()">Run Performance Tests</button>
+            </div>
+            
+            <div class="test-category">
+                <h3><span class="icon icon-edge">E</span>Edge Cases</h3>
+                <p>Test microphone permission denial, network interruptions, rapid start/stop cycles, and error recovery.</p>
+                <button class="btn btn-primary" onclick="runEdgeCaseTests()">Run Edge Case Tests</button>
+            </div>
+        </div>
+        
+        <div class="progress-section">
+            <div class="progress-header">
+                <h3>📈 Test Progress</h3>
+                <span id="progressText">0% Complete</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value" id="totalTests">0</div>
+                    <div class="stat-label">Total Tests</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="passedTests">0</div>
+                    <div class="stat-label">Passed</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="failedTests">0</div>
+                    <div class="stat-label">Failed</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="testDuration">0s</div>
+                    <div class="stat-label">Duration</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="results-section">
+            <h3>📋 Test Results</h3>
+            <div id="testResults"></div>
+        </div>
+    </div>
+
+    <!-- Load test modules -->
+    <script src="gdm-live-audio-unit-tests.js"></script>
+    <script src="gdm-live-audio-integration-tests.js"></script>
+    <script src="gdm-live-audio-performance-tests.js"></script>
+    
+    <script>
+        // Test suite state
+        let testResults = [];
+        let totalTests = 0;
+        let passedTests = 0;
+        let failedTests = 0;
+        let startTime = 0;
+        
+        // Initialize the test suite
+        document.addEventListener('DOMContentLoaded', function() {
+            checkSystemRequirements();
+            updateStats();
+        });
+        
+        function checkSystemRequirements() {
+            log('🔍 Checking system requirements...', 'info');
+            
+            // Check custom element support
+            const customElementSupported = 'customElements' in window;
+            updateStatus('customElementStatus', customElementSupported);
+            
+            // Check Web Audio API
+            const audioContextSupported = 'AudioContext' in window || 'webkitAudioContext' in window;
+            updateStatus('audioContextStatus', audioContextSupported);
+            
+            // Check MediaStream API
+            const mediaStreamSupported = 'mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices;
+            updateStatus('mediaStreamStatus', mediaStreamSupported);
+            
+            // Check secure context (required for getUserMedia)
+            const secureContext = window.isSecureContext;
+            updateStatus('secureContextStatus', secureContext);
+            
+            if (customElementSupported && audioContextSupported && mediaStreamSupported && secureContext) {
+                log('✅ All system requirements met', 'success');
+            } else {
+                log('⚠️ Some system requirements not met. Tests may fail.', 'warning');
+            }
+        }
+        
+        function updateStatus(elementId, isReady) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.className = `status-indicator ${isReady ? 'ready' : ''}`;
+            }
+        }
+        
+        async function runAllTests() {
+            log('🚀 Starting comprehensive test suite...', 'info');
+            startTime = Date.now();
+            resetStats();
+            
+            try {
+                await runUnitTests();
+                await runIntegrationTests();
+                await runBrowserCompatibilityTests();
+                await runUITests();
+                await runPerformanceTests();
+                await runEdgeCaseTests();
+                
+                const duration = Math.round((Date.now() - startTime) / 1000);
+                log(`🎉 All tests completed in ${duration}s`, 'success');
+                updateTestDuration(duration);
+            } catch (error) {
+                log(`❌ Test suite failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function runUnitTests() {
+            log('🧪 Running Unit Tests...', 'info');
+            if (typeof GdmLiveAudioUnitTests !== 'undefined') {
+                const unitTests = new GdmLiveAudioUnitTests();
+                await unitTests.runAllTests(logTestResult);
+            } else {
+                log('⚠️ Unit test module not loaded', 'warning');
+            }
+        }
+        
+        async function runIntegrationTests() {
+            log('🔗 Running Integration Tests...', 'info');
+            if (typeof GdmLiveAudioIntegrationTests !== 'undefined') {
+                const integrationTests = new GdmLiveAudioIntegrationTests();
+                await integrationTests.runAllTests(logTestResult);
+            } else {
+                log('⚠️ Integration test module not loaded', 'warning');
+            }
+        }
+        
+        async function runBrowserCompatibilityTests() {
+            log('🌐 Running Browser Compatibility Tests...', 'info');
+            // Browser compatibility tests are included in the performance test module
+            if (typeof GdmLiveAudioPerformanceTests !== 'undefined') {
+                const perfTests = new GdmLiveAudioPerformanceTests();
+                await perfTests.runBrowserCompatibilityTests(logTestResult);
+            } else {
+                log('⚠️ Performance test module not loaded', 'warning');
+            }
+        }
+        
+        async function runUITests() {
+            log('🎨 Running UI Tests...', 'info');
+            // UI tests are included in the integration test module
+            if (typeof GdmLiveAudioIntegrationTests !== 'undefined') {
+                const integrationTests = new GdmLiveAudioIntegrationTests();
+                await integrationTests.runUITests(logTestResult);
+            } else {
+                log('⚠️ Integration test module not loaded', 'warning');
+            }
+        }
+        
+        async function runPerformanceTests() {
+            log('⚡ Running Performance Tests...', 'info');
+            if (typeof GdmLiveAudioPerformanceTests !== 'undefined') {
+                const perfTests = new GdmLiveAudioPerformanceTests();
+                await perfTests.runPerformanceTests(logTestResult);
+            } else {
+                log('⚠️ Performance test module not loaded', 'warning');
+            }
+        }
+        
+        async function runEdgeCaseTests() {
+            log('🔥 Running Edge Case Tests...', 'info');
+            if (typeof GdmLiveAudioPerformanceTests !== 'undefined') {
+                const perfTests = new GdmLiveAudioPerformanceTests();
+                await perfTests.runEdgeCaseTests(logTestResult);
+            } else {
+                log('⚠️ Performance test module not loaded', 'warning');
+            }
+        }
+        
+        function logTestResult(testName, passed, message, duration) {
+            totalTests++;
+            if (passed) {
+                passedTests++;
+                log(`✅ ${testName}: ${message} (${duration}ms)`, 'success');
+            } else {
+                failedTests++;
+                log(`❌ ${testName}: ${message} (${duration}ms)`, 'error');
+            }
+            updateStats();
+        }
+        
+        function log(message, type = 'info') {
+            const resultsDiv = document.getElementById('testResults');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            resultsDiv.appendChild(logEntry);
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+        
+        function clearResults() {
+            document.getElementById('testResults').innerHTML = '';
+            resetStats();
+            log('🗑️ Results cleared', 'info');
+        }
+        
+        function resetStats() {
+            totalTests = 0;
+            passedTests = 0;
+            failedTests = 0;
+            updateStats();
+        }
+        
+        function updateStats() {
+            document.getElementById('totalTests').textContent = totalTests;
+            document.getElementById('passedTests').textContent = passedTests;
+            document.getElementById('failedTests').textContent = failedTests;
+            
+            const progress = totalTests > 0 ? (passedTests + failedTests) / totalTests * 100 : 0;
+            document.getElementById('progressFill').style.width = `${progress}%`;
+            document.getElementById('progressText').textContent = `${Math.round(progress)}% Complete`;
+        }
+        
+        function updateTestDuration(seconds) {
+            document.getElementById('testDuration').textContent = `${seconds}s`;
+        }
+        
+        function exportResults() {
+            const results = {
+                timestamp: new Date().toISOString(),
+                totalTests,
+                passedTests,
+                failedTests,
+                duration: document.getElementById('testDuration').textContent,
+                userAgent: navigator.userAgent,
+                logs: Array.from(document.querySelectorAll('.log-entry')).map(entry => entry.textContent)
+            };
+            
+            const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `gdm-live-audio-test-results-${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            log('📊 Test results exported', 'success');
+        }
+    </script>
+</body>
+</html> 

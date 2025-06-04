@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GdmLiveAudio Comprehensive Test Runner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            font-weight: 300;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .test-dashboard {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+            padding: 40px;
+        }
+
+        .control-panel {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            height: fit-content;
+        }
+
+        .control-panel h3 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+            font-size: 1.3em;
+        }
+
+        .test-suite-controls {
+            margin-bottom: 30px;
+        }
+
+        .test-suite {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+            transition: all 0.3s ease;
+        }
+
+        .test-suite:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .test-suite h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .test-suite p {
+            color: #6c757d;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+
+        .test-suite-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .stat-badge {
+            background: #e9ecef;
+            color: #495057;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #229954;
+            transform: translateY(-2px);
+        }
+
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #e67e22;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .global-controls {
+            border-top: 1px solid #dee2e6;
+            padding-top: 20px;
+        }
+
+        .results-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .results-header h3 {
+            color: #2c3e50;
+            font-size: 1.4em;
+        }
+
+        .progress-container {
+            margin-bottom: 30px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: #e9ecef;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #27ae60, #2ecc71);
+            width: 0%;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+        .test-results-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .test-suite-result {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .test-suite-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .test-suite-title {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .test-suite-summary {
+            display: flex;
+            gap: 10px;
+        }
+
+        .summary-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .summary-badge.passed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .summary-badge.failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .summary-badge.duration {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .test-results-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .test-result-item {
+            padding: 12px 20px;
+            border-bottom: 1px solid #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .test-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .test-result-info {
+            flex: 1;
+        }
+
+        .test-result-name {
+            font-weight: 500;
+            color: #495057;
+            margin-bottom: 4px;
+        }
+
+        .test-result-message {
+            font-size: 0.85em;
+            color: #6c757d;
+        }
+
+        .test-result-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-indicator.passed {
+            background: #27ae60;
+        }
+
+        .status-indicator.failed {
+            background: #e74c3c;
+        }
+
+        .status-indicator.running {
+            background: #f39c12;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .test-duration {
+            font-size: 0.8em;
+            color: #6c757d;
+        }
+
+        .overall-summary {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 30px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .summary-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .summary-value.passed {
+            color: #27ae60;
+        }
+
+        .summary-value.failed {
+            color: #e74c3c;
+        }
+
+        .summary-value.total {
+            color: #3498db;
+        }
+
+        .summary-value.duration {
+            color: #9b59b6;
+        }
+
+        .summary-label {
+            font-size: 0.9em;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .log-console {
+            background: #2d3748;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            max-height: 250px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 6px;
+            padding: 2px 0;
+        }
+
+        .log-timestamp {
+            color: #a0aec0;
+            margin-right: 8px;
+        }
+
+        .log-level-info {
+            color: #63b3ed;
+        }
+
+        .log-level-success {
+            color: #68d391;
+        }
+
+        .log-level-warning {
+            color: #fbb6ce;
+        }
+
+        .log-level-error {
+            color: #fc8181;
+        }
+
+        .export-controls {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .export-btn {
+            background: #6c757d;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-right: 10px;
+        }
+
+        .export-btn:hover {
+            background: #5a6268;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 1024px) {
+            .test-dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>🧪 GdmLiveAudio Test Suite</h1>
+                <p>Comprehensive testing framework for voice interaction component</p>
+            </div>
+        </div>
+
+        <div class="test-dashboard">
+            <div class="control-panel">
+                <h3>Test Suites</h3>
+                
+                <div class="test-suite-controls">
+                    <div class="test-suite">
+                        <h4>🔧 Unit Tests</h4>
+                        <p>Core component functionality, audio processing, and browser compatibility</p>
+                        <div class="test-suite-stats">
+                            <span class="stat-badge" id="unitTestCount">9 tests</span>
+                            <span class="stat-badge" id="unitTestStatus">Ready</span>
+                        </div>
+                        <button class="btn btn-success" onclick="runUnitTests()">Run Unit Tests</button>
+                    </div>
+
+                    <div class="test-suite">
+                        <h4>🔗 Integration Tests</h4>
+                        <p>React wrapper, Gemini API integration, and component lifecycle</p>
+                        <div class="test-suite-stats">
+                            <span class="stat-badge" id="integrationTestCount">9 tests</span>
+                            <span class="stat-badge" id="integrationTestStatus">Ready</span>
+                        </div>
+                        <button class="btn btn-warning" onclick="runIntegrationTests()">Run Integration Tests</button>
+                    </div>
+
+                    <div class="test-suite">
+                        <h4>⚡ Performance Tests</h4>
+                        <p>Memory usage, CPU performance, and edge case handling</p>
+                        <div class="test-suite-stats">
+                            <span class="stat-badge" id="performanceTestCount">9 tests</span>
+                            <span class="stat-badge" id="performanceTestStatus">Ready</span>
+                        </div>
+                        <button class="btn btn-danger" onclick="runPerformanceTests()">Run Performance Tests</button>
+                    </div>
+                </div>
+
+                <div class="global-controls">
+                    <h3>Global Controls</h3>
+                    <button class="btn btn-primary" onclick="runAllTests()">🚀 Run All Tests</button>
+                    <button class="btn btn-primary" onclick="clearResults()">🗑️ Clear Results</button>
+                    
+                    <div style="margin-top: 20px;">
+                        <label style="display: block; margin-bottom: 10px;">
+                            <input type="checkbox" id="stopOnFailure"> Stop on first failure
+                        </label>
+                        <label style="display: block; margin-bottom: 10px;">
+                            <input type="checkbox" id="verboseLogging"> Verbose logging
+                        </label>
+                        <label style="display: block;">
+                            <input type="checkbox" id="autoScroll" checked> Auto-scroll logs
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-panel">
+                <div class="results-header">
+                    <h3>Test Results</h3>
+                    <div id="testStatus">Ready to run tests</div>
+                </div>
+
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span id="progressText">0 / 0 tests completed</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                </div>
+
+                <div class="test-results-grid" id="testResultsGrid">
+                    <!-- Test results will be populated here -->
+                </div>
+
+                <div class="overall-summary hidden" id="overallSummary">
+                    <h3>Overall Test Summary</h3>
+                    <div class="summary-grid">
+                        <div class="summary-card">
+                            <div class="summary-value total" id="totalTests">0</div>
+                            <div class="summary-label">Total Tests</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-value passed" id="passedTests">0</div>
+                            <div class="summary-label">Passed</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-value failed" id="failedTests">0</div>
+                            <div class="summary-label">Failed</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-value duration" id="totalDuration">0s</div>
+                            <div class="summary-label">Duration</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="log-console" id="logConsole">
+                    <div class="log-entry">
+                        <span class="log-timestamp">[00:00:00]</span>
+                        <span class="log-level-info">Test runner initialized. Ready to execute tests.</span>
+                    </div>
+                </div>
+
+                <div class="export-controls">
+                    <button class="export-btn" onclick="exportResults('json')">Export JSON</button>
+                    <button class="export-btn" onclick="exportResults('csv')">Export CSV</button>
+                    <button class="export-btn" onclick="exportResults('html')">Export HTML</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load test suites -->
+    <script src="gdm-live-audio-unit-tests.js"></script>
+    <script src="gdm-live-audio-integration-tests.js"></script>
+    <script src="gdm-live-audio-performance-tests.js"></script>
+
+    <script>
+        class TestRunner {
+            constructor() {
+                this.testSuites = new Map();
+                this.allResults = [];
+                this.isRunning = false;
+                this.startTime = null;
+                this.setupTestSuites();
+            }
+
+            setupTestSuites() {
+                // Initialize test suites
+                this.testSuites.set('unit', {
+                    name: 'Unit Tests',
+                    instance: new GdmLiveAudioUnitTests(),
+                    results: null,
+                    status: 'ready'
+                });
+
+                this.testSuites.set('integration', {
+                    name: 'Integration Tests',
+                    instance: new GdmLiveAudioIntegrationTests(),
+                    results: null,
+                    status: 'ready'
+                });
+
+                this.testSuites.set('performance', {
+                    name: 'Performance Tests',
+                    instance: new GdmLiveAudioPerformanceTests(),
+                    results: null,
+                    status: 'ready'
+                });
+            }
+
+            log(message, level = 'info') {
+                const logConsole = document.getElementById('logConsole');
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                logEntry.innerHTML = `
+                    <span class="log-timestamp">[${timestamp}]</span>
+                    <span class="log-level-${level}">${message}</span>
+                `;
+                logConsole.appendChild(logEntry);
+                
+                if (document.getElementById('autoScroll').checked) {
+                    logConsole.scrollTop = logConsole.scrollHeight;
+                }
+            }
+
+            updateProgress() {
+                const totalTests = Array.from(this.testSuites.values())
+                    .reduce((sum, suite) => sum + (suite.results ? suite.results.total : 0), 0);
+                
+                const completedTests = Array.from(this.testSuites.values())
+                    .reduce((sum, suite) => sum + (suite.results ? suite.results.passed + suite.results.failed : 0), 0);
+
+                const progress = totalTests > 0 ? (completedTests / totalTests) * 100 : 0;
+                
+                document.getElementById('progressFill').style.width = `${progress}%`;
+                document.getElementById('progressText').textContent = `${completedTests} / ${totalTests} tests completed`;
+                document.getElementById('progressPercent').textContent = `${progress.toFixed(1)}%`;
+            }
+
+            updateTestSuiteStatus(suiteKey, status) {
+                const statusElement = document.getElementById(`${suiteKey}TestStatus`);
+                if (statusElement) {
+                    statusElement.textContent = status;
+                    statusElement.className = `stat-badge ${status.toLowerCase()}`;
+                }
+            }
+
+            renderTestResults() {
+                const grid = document.getElementById('testResultsGrid');
+                grid.innerHTML = '';
+
+                for (const [key, suite] of this.testSuites) {
+                    if (!suite.results) continue;
+
+                    const suiteElement = document.createElement('div');
+                    suiteElement.className = 'test-suite-result';
+                    
+                    suiteElement.innerHTML = `
+                        <div class="test-suite-header">
+                            <div class="test-suite-title">${suite.name}</div>
+                            <div class="test-suite-summary">
+                                <span class="summary-badge passed">${suite.results.passed} passed</span>
+                                <span class="summary-badge failed">${suite.results.failed} failed</span>
+                                <span class="summary-badge duration">${this.calculateDuration(suite.results.results)}ms</span>
+                            </div>
+                        </div>
+                        <div class="test-results-list">
+                            ${suite.results.results.map(test => `
+                                <div class="test-result-item">
+                                    <div class="test-result-info">
+                                        <div class="test-result-name">${test.name}</div>
+                                        <div class="test-result-message">${test.message}</div>
+                                    </div>
+                                    <div class="test-result-status">
+                                        <div class="status-indicator ${test.status.toLowerCase()}"></div>
+                                        <div class="test-duration">${test.duration}ms</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    
+                    grid.appendChild(suiteElement);
+                }
+            }
+
+            calculateDuration(results) {
+                return results.reduce((sum, test) => sum + parseFloat(test.duration), 0).toFixed(2);
+            }
+
+            updateOverallSummary() {
+                const totalTests = Array.from(this.testSuites.values())
+                    .reduce((sum, suite) => sum + (suite.results ? suite.results.total : 0), 0);
+                
+                const passedTests = Array.from(this.testSuites.values())
+                    .reduce((sum, suite) => sum + (suite.results ? suite.results.passed : 0), 0);
+                
+                const failedTests = Array.from(this.testSuites.values())
+                    .reduce((sum, suite) => sum + (suite.results ? suite.results.failed : 0), 0);
+
+                const totalDuration = this.startTime ? ((Date.now() - this.startTime) / 1000).toFixed(1) : 0;
+
+                document.getElementById('totalTests').textContent = totalTests;
+                document.getElementById('passedTests').textContent = passedTests;
+                document.getElementById('failedTests').textContent = failedTests;
+                document.getElementById('totalDuration').textContent = `${totalDuration}s`;
+                
+                document.getElementById('overallSummary').classList.remove('hidden');
+            }
+
+            async runTestSuite(suiteKey) {
+                const suite = this.testSuites.get(suiteKey);
+                if (!suite) return;
+
+                this.updateTestSuiteStatus(suiteKey, 'Running');
+                this.log(`Starting ${suite.name}...`);
+
+                try {
+                    const results = await suite.instance.runAllTests();
+                    suite.results = results;
+                    suite.status = 'completed';
+                    
+                    this.updateTestSuiteStatus(suiteKey, 'Completed');
+                    this.log(`${suite.name} completed: ${results.passed}/${results.total} passed`, 
+                             results.failed > 0 ? 'warning' : 'success');
+                    
+                    this.renderTestResults();
+                    this.updateProgress();
+                    
+                } catch (error) {
+                    suite.status = 'failed';
+                    this.updateTestSuiteStatus(suiteKey, 'Failed');
+                    this.log(`${suite.name} failed: ${error.message}`, 'error');
+                }
+            }
+
+            async runAllTests() {
+                if (this.isRunning) return;
+                
+                this.isRunning = true;
+                this.startTime = Date.now();
+                this.log('Starting comprehensive test suite...', 'info');
+                
+                document.getElementById('testStatus').textContent = 'Running tests...';
+                
+                try {
+                    for (const [key, suite] of this.testSuites) {
+                        await this.runTestSuite(key);
+                        
+                        if (document.getElementById('stopOnFailure').checked && 
+                            suite.results && suite.results.failed > 0) {
+                            this.log('Stopping due to test failures', 'warning');
+                            break;
+                        }
+                    }
+                    
+                    this.log('All tests completed!', 'success');
+                    document.getElementById('testStatus').textContent = 'Tests completed';
+                    
+                } catch (error) {
+                    this.log(`Test execution failed: ${error.message}`, 'error');
+                    document.getElementById('testStatus').textContent = 'Tests failed';
+                } finally {
+                    this.isRunning = false;
+                    this.updateOverallSummary();
+                }
+            }
+
+            clearResults() {
+                for (const [key, suite] of this.testSuites) {
+                    suite.results = null;
+                    suite.status = 'ready';
+                    this.updateTestSuiteStatus(key, 'Ready');
+                }
+                
+                document.getElementById('testResultsGrid').innerHTML = '';
+                document.getElementById('overallSummary').classList.add('hidden');
+                document.getElementById('progressFill').style.width = '0%';
+                document.getElementById('progressText').textContent = '0 / 0 tests completed';
+                document.getElementById('progressPercent').textContent = '0%';
+                document.getElementById('testStatus').textContent = 'Ready to run tests';
+                
+                document.getElementById('logConsole').innerHTML = `
+                    <div class="log-entry">
+                        <span class="log-timestamp">[${new Date().toLocaleTimeString()}]</span>
+                        <span class="log-level-info">Test results cleared. Ready to run tests.</span>
+                    </div>
+                `;
+                
+                this.log('Test results cleared');
+            }
+
+            exportResults(format) {
+                const allResults = Array.from(this.testSuites.values())
+                    .filter(suite => suite.results)
+                    .map(suite => ({
+                        suiteName: suite.name,
+                        ...suite.results
+                    }));
+
+                if (allResults.length === 0) {
+                    this.log('No results to export', 'warning');
+                    return;
+                }
+
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                let content, filename, mimeType;
+
+                switch (format) {
+                    case 'json':
+                        content = JSON.stringify({
+                            timestamp: new Date().toISOString(),
+                            browser: navigator.userAgent,
+                            testSuites: allResults
+                        }, null, 2);
+                        filename = `gdm-live-audio-test-results-${timestamp}.json`;
+                        mimeType = 'application/json';
+                        break;
+
+                    case 'csv':
+                        const csvRows = ['Suite,Test,Status,Duration,Message'];
+                        allResults.forEach(suite => {
+                            suite.results.forEach(test => {
+                                csvRows.push(`"${suite.suiteName}","${test.name}","${test.status}","${test.duration}","${test.message}"`);
+                            });
+                        });
+                        content = csvRows.join('\n');
+                        filename = `gdm-live-audio-test-results-${timestamp}.csv`;
+                        mimeType = 'text/csv';
+                        break;
+
+                    case 'html':
+                        content = this.generateHTMLReport(allResults);
+                        filename = `gdm-live-audio-test-results-${timestamp}.html`;
+                        mimeType = 'text/html';
+                        break;
+                }
+
+                const blob = new Blob([content], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                this.log(`Results exported as ${filename}`, 'success');
+            }
+
+            generateHTMLReport(results) {
+                return `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>GdmLiveAudio Test Results</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; margin: 20px; }
+                            .header { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+                            .suite { margin-bottom: 30px; border: 1px solid #dee2e6; border-radius: 8px; }
+                            .suite-header { background: #e9ecef; padding: 15px; font-weight: bold; }
+                            .test { padding: 10px 15px; border-bottom: 1px solid #f8f9fa; }
+                            .passed { color: #28a745; }
+                            .failed { color: #dc3545; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">
+                            <h1>GdmLiveAudio Test Results</h1>
+                            <p>Generated: ${new Date().toLocaleString()}</p>
+                            <p>Browser: ${navigator.userAgent}</p>
+                        </div>
+                        ${results.map(suite => `
+                            <div class="suite">
+                                <div class="suite-header">${suite.suiteName} (${suite.passed}/${suite.total} passed)</div>
+                                ${suite.results.map(test => `
+                                    <div class="test">
+                                        <span class="${test.status.toLowerCase()}">${test.status}</span>
+                                        <strong>${test.name}</strong> (${test.duration}ms)
+                                        <br><small>${test.message}</small>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `).join('')}
+                    </body>
+                    </html>
+                `;
+            }
+        }
+
+        // Initialize test runner
+        let testRunner;
+
+        // Global functions for button handlers
+        window.runAllTests = () => testRunner.runAllTests();
+        window.runUnitTests = () => testRunner.runTestSuite('unit');
+        window.runIntegrationTests = () => testRunner.runTestSuite('integration');
+        window.runPerformanceTests = () => testRunner.runTestSuite('performance');
+        window.clearResults = () => testRunner.clearResults();
+        window.exportResults = (format) => testRunner.exportResults(format);
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            testRunner = new TestRunner();
+        });
+    </script>
+</body>
+</html> 
