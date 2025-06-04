@@ -1,7 +1,9 @@
 {
   "functions": {
     "api/gemini-proxy.ts": {
-      "runtime": "nodejs18.x"
+      "runtime": "nodejs18.x",
+      "includeFiles": "**/*.ts"
     }
-  }
+  },
+  "version": 2
 }
