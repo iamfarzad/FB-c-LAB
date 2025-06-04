@@ -83,27 +83,35 @@ export const FullScreenVoiceOverlay: React.FC<FullScreenVoiceOverlayProps> = ({
         setRecordingStartTime(Date.now());
         setElapsedTime('00:00');
         
-        // Get audio context and create gain node for visualization
+        // Get audio context and processor for visualization
         const audioContext = gdmElement.getInputAudioContext();
         const audioProcessor = gdmElement.getAudioProcessor();
         
         if (audioContext && audioProcessor) {
           try {
+            // Create a gain node for visualization
             const gainNode = audioContext.createGain();
             gainNode.gain.value = 1.0;
             
-            // Connect the audio processor to our gain node for visualization
-            audioProcessor.connect(gainNode);
-            
             setInputNode(gainNode);
-            console.log('[FullScreenVoiceOverlay] Audio visualization node connected successfully');
+            console.log('[FullScreenVoiceOverlay] Audio visualization node created successfully');
           } catch (error) {
-            console.error('[FullScreenVoiceOverlay] Error connecting audio visualization:', error);
+            console.error('[FullScreenVoiceOverlay] Error creating audio visualization node:', error);
             setInputNode(null);
           }
         } else {
-          console.warn('[FullScreenVoiceOverlay] Audio context or processor not available');
-          setInputNode(null);
+          console.warn('[FullScreenVoiceOverlay] Audio context or processor not available yet');
+          // Create a dummy gain node for visualization
+          try {
+            const dummyContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const dummyGain = dummyContext.createGain();
+            dummyGain.gain.value = 0.5;
+            setInputNode(dummyGain);
+            console.log('[FullScreenVoiceOverlay] Created dummy audio node for visualization');
+          } catch (error) {
+            console.error('[FullScreenVoiceOverlay] Error creating dummy audio node:', error);
+            setInputNode(null);
+          }
         }
       } else {
         setInputNode(null);
@@ -121,6 +129,14 @@ export const FullScreenVoiceOverlay: React.FC<FullScreenVoiceOverlayProps> = ({
       console.log('[FullScreenVoiceOverlay] AI speaking state:', detail.isAiSpeaking);
     };
 
+    const handleAudioLevel = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      // Audio level data for enhanced visualization
+      if (detail.level > 0.1) {
+        console.log('[FullScreenVoiceOverlay] Audio level:', detail.level);
+      }
+    };
+
     try {
       (gdmElement as unknown as EventTarget).addEventListener('user-speech-interim', handleUserSpeechInterim as EventListener);
       (gdmElement as unknown as EventTarget).addEventListener('user-speech-final', handleUserSpeechFinal as EventListener);
@@ -128,6 +144,7 @@ export const FullScreenVoiceOverlay: React.FC<FullScreenVoiceOverlayProps> = ({
       (gdmElement as unknown as EventTarget).addEventListener('recording-state-changed', handleRecordingStateChanged as EventListener);
       (gdmElement as unknown as EventTarget).addEventListener('status-changed', handleStatusChanged as EventListener);
       (gdmElement as unknown as EventTarget).addEventListener('ai-speaking-state', handleAiSpeakingState as EventListener);
+      (gdmElement as unknown as EventTarget).addEventListener('audio-level', handleAudioLevel as EventListener);
 
       return () => {
         (gdmElement as unknown as EventTarget).removeEventListener('user-speech-interim', handleUserSpeechInterim as EventListener);
@@ -136,6 +153,7 @@ export const FullScreenVoiceOverlay: React.FC<FullScreenVoiceOverlayProps> = ({
         (gdmElement as unknown as EventTarget).removeEventListener('recording-state-changed', handleRecordingStateChanged as EventListener);
         (gdmElement as unknown as EventTarget).removeEventListener('status-changed', handleStatusChanged as EventListener);
         (gdmElement as unknown as EventTarget).removeEventListener('ai-speaking-state', handleAiSpeakingState as EventListener);
+        (gdmElement as unknown as EventTarget).removeEventListener('audio-level', handleAudioLevel as EventListener);
       };
     } catch (error) {
       console.error('[FullScreenVoiceOverlay] Error setting up event listeners:', error);
@@ -252,6 +270,10 @@ export const FullScreenVoiceOverlay: React.FC<FullScreenVoiceOverlayProps> = ({
           isRecording={isRecording}
           isAiSpeaking={isAiSpeaking}
         />
+        {/* Debug info */}
+        <div className="absolute top-4 left-4 text-xs text-white bg-black/50 p-2 rounded">
+          Debug: inputNode={inputNode ? 'connected' : 'null'}, recording={isRecording ? 'yes' : 'no'}, aiSpeaking={isAiSpeaking ? 'yes' : 'no'}
+        </div>
       </div>
       
       {/* Content Overlay - Refined Layout */}

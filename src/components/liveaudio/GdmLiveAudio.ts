@@ -55,20 +55,18 @@ export class GdmLiveAudio extends LitElement {
   constructor() {
     super();
     this.initializeAudioContexts();
+    console.log('[GdmLiveAudio] Constructor called - custom element created');
   }
 
   private initializeAudioContexts(): void {
     try {
+      console.log('[GdmLiveAudio] Initializing audio contexts...');
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       this.inputAudioContext = new AudioContext({ sampleRate: this.SAMPLE_RATE_IN });
       this.outputAudioContext = new AudioContext({ sampleRate: this.SAMPLE_RATE_OUT });
-      
-      this.initAudioProcessing().catch(error => {
-        console.error('Error initializing audio processing:', error);
-        this.updateError('Failed to initialize audio processing');
-      });
+      console.log('[GdmLiveAudio] Audio contexts created successfully');
     } catch (error) {
-      console.error('Error creating audio contexts:', error);
+      console.error('[GdmLiveAudio] Error creating audio contexts:', error);
       this.updateError('Your browser does not support the required audio features');
     }
   }
@@ -79,19 +77,37 @@ export class GdmLiveAudio extends LitElement {
     }
 
     try {
+      // Get microphone access for visualization
+      this.mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        audio: { 
+          sampleRate: this.SAMPLE_RATE_IN,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
+
       // Ensure audio context is in the correct state
       if (this.inputAudioContext.state === 'suspended') {
         await this.inputAudioContext.resume();
       }
       
-      // Create audio processor
+      // Create audio processing chain for visualization
+      const source = this.inputAudioContext.createMediaStreamSource(this.mediaStream);
       this.audioProcessor = this.inputAudioContext.createScriptProcessor(
         this.BUFFER_SIZE,
         1, // Input channels
         1  // Output channels
       );
       
+      // Connect source -> processor -> destination for visualization
+      source.connect(this.audioProcessor);
+      this.audioProcessor.connect(this.inputAudioContext.destination);
+      
       this.audioProcessor.onaudioprocess = this.handleAudioProcess.bind(this);
+      
+      console.log('[GdmLiveAudio] Audio processing initialized with microphone access for visualization');
       
     } catch (error) {
       console.error('Error initializing audio processing:', error);
@@ -100,8 +116,34 @@ export class GdmLiveAudio extends LitElement {
   }
 
   private handleAudioProcess(e: AudioProcessingEvent): void {
-    // Legacy method - no longer used with browser STT/TTS (Option B)
-    // Audio processing now handled by browser SpeechRecognition API
+    if (!this.isRecording || !this.mediaStream) return;
+    
+    try {
+      // Process audio data for visualization purposes
+      const inputData = e.inputBuffer.getChannelData(0);
+      this.audioChunks.push(new Float32Array(inputData));
+      
+      // Keep only recent chunks for visualization (limit memory usage)
+      if (this.audioChunks.length > 10) {
+        this.audioChunks = this.audioChunks.slice(-5);
+      }
+      
+      // Calculate audio level for visualization
+      let sum = 0;
+      for (let i = 0; i < inputData.length; i++) {
+        sum += inputData[i] * inputData[i];
+      }
+      const rms = Math.sqrt(sum / inputData.length);
+      const audioLevel = Math.min(1, rms * 10); // Amplify for better visualization
+      
+      // Dispatch audio level event for visualization
+      this.dispatchEvent(new CustomEvent('audio-level', { 
+        detail: { level: audioLevel, isRecording: this.isRecording } 
+      }));
+      
+    } catch (error) {
+      console.error('Error in audio processing:', error);
+    }
   }
 
   // Removed old audio processing - now using browser STT/TTS (Option B)
@@ -167,6 +209,9 @@ export class GdmLiveAudio extends LitElement {
       this.updateStatus('Starting speech recognition...');
       this.isRecording = true;
       this.requestUpdate('isRecording');
+
+      // Initialize audio contexts for visualization
+      await this.initAudioProcessing();
 
       // Initialize browser-based Speech Recognition (Option B from serverless proxy plan)
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -240,6 +285,17 @@ export class GdmLiveAudio extends LitElement {
     if (this.speechRecognition) {
       this.speechRecognition.stop();
       this.speechRecognition = null;
+    }
+
+    // Clean up audio processing when stopping
+    if (this.audioProcessor) {
+      this.audioProcessor.disconnect();
+      this.audioProcessor = null;
+    }
+
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach(track => track.stop());
+      this.mediaStream = null;
     }
 
     this.dispatchEvent(new CustomEvent('recording-state-changed', { detail: { isRecording: false } }));
@@ -361,8 +417,26 @@ export class GdmLiveAudio extends LitElement {
       window.speechSynthesis.cancel();
       this.speechUtterance = null;
     }
+
+    // Clean up audio processing
+    if (this.audioProcessor) {
+      this.audioProcessor.disconnect();
+      this.audioProcessor = null;
+    }
+
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach(track => track.stop());
+      this.mediaStream = null;
+    }
+
+    if (this.autoStopTimeout) {
+      window.clearTimeout(this.autoStopTimeout);
+      this.autoStopTimeout = null;
+    }
+
     this.isRecording = false;
     this.lastUserInterimTranscript = '';
+    this.audioChunks = [];
   }
 
   override disconnectedCallback() {
