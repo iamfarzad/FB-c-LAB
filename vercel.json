@@ -3,13 +3,5 @@
     "api/gemini-proxy.ts": {
       "runtime": "nodejs18.x"
     }
-  },
-  "env": {
-    "GEMINI_API_KEY_SERVER": "@gemini-api-key-server"
-  },
-  "build": {
-    "env": {
-      "GEMINI_API_KEY_SERVER": "@gemini-api-key-server"
-    }
   }
-} 
+}
