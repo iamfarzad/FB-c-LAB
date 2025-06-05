@@ -188,7 +188,6 @@ async function handleGenerate(body: ProxyRequestBody) {
     const model = ai.getGenerativeModel({
       model: body.model || 'gemini-2.0-flash-001',
       systemInstruction: body.systemInstruction,
-      tools: [{ googleSearchRetrieval: {} }],
     });
 
     const result = await model.generateContent(body.prompt || '');
@@ -229,7 +228,6 @@ async function handleStream(body: ProxyRequestBody, res: VercelResponse) {
     const model = ai.getGenerativeModel({
       model: body.model || 'gemini-2.0-flash-001',
       systemInstruction: body.systemInstruction,
-      tools: [{ googleSearchRetrieval: {} }],
     });
 
     const result = await model.generateContentStream(body.prompt || '');
@@ -422,7 +420,6 @@ async function handleGenerateChatResponse(body: ProxyRequestBody) {
     const model = ai.getGenerativeModel({ 
       model: body.model,
       systemInstruction: body.systemInstruction,
-      tools: [{ googleSearchRetrieval: {} }], // Enable Google Search for chat
       safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
