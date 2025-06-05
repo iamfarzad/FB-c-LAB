@@ -793,7 +793,7 @@ async function handleSpeakText(body: ProxyRequestBody) {
     const speechPrompt = `Convert this text to natural speech: "${body.text}"`;
     
     const result = await model.generateContent(speechPrompt);
-    const response = await result.response;
+    await result.response; // Process the response but don't store it
     
     // In a real implementation, this would return audio data
     // For now, return success to indicate the text was processed
