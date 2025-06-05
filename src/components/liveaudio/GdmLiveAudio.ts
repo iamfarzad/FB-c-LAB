@@ -119,13 +119,15 @@ export class GdmLiveAudio extends LitElement {
     if (!this.isRecording || !this.mediaStream) return;
     
     try {
-      // Process audio data for visualization purposes
+      // Process audio data for real Gemini Live Audio streaming
       const inputData = e.inputBuffer.getChannelData(0);
-      this.audioChunks.push(new Float32Array(inputData));
+      const audioChunk = new Float32Array(inputData);
+      this.audioChunks.push(audioChunk);
       
-      // Keep only recent chunks for visualization (limit memory usage)
-      if (this.audioChunks.length > 10) {
-        this.audioChunks = this.audioChunks.slice(-5);
+      // Stream audio chunks to Gemini Live Audio API in real-time
+      if (this.audioChunks.length >= 3) { // Stream every ~120ms for real-time response
+        const chunksToStream = this.audioChunks.splice(0, 3);
+        this.streamAudioToGemini(chunksToStream);
       }
       
       // Calculate audio level for visualization
@@ -202,71 +204,130 @@ export class GdmLiveAudio extends LitElement {
     }
   }
 
+  private async initializeGeminiLiveAudio(): Promise<void> {
+    try {
+      // Import the streamAudio function from geminiService
+      const { streamAudio } = await import('../../../services/geminiService');
+      
+      // Set up real-time audio streaming to Gemini
+      if (this.audioProcessor && this.inputAudioContext) {
+        this.audioProcessor.onaudioprocess = (e: AudioProcessingEvent) => {
+          this.handleAudioProcess(e);
+        };
+        
+        console.log('[GdmLiveAudio] Gemini Live Audio initialized with real audio processing');
+        this.updateStatus('Gemini Live Audio ready');
+      } else {
+        throw new Error('Audio processing not initialized');
+      }
+    } catch (error) {
+      console.error('[GdmLiveAudio] Failed to initialize Gemini Live Audio:', error);
+      throw error;
+    }
+  }
+
+  private async streamAudioToGemini(audioChunks: Float32Array[]): Promise<void> {
+    try {
+      // Import the streamAudio function
+      const { streamAudio } = await import('../../../services/geminiService');
+      
+      // Stream audio chunks to Gemini Live Audio API
+      await streamAudio(
+        audioChunks,
+        (transcript: string, isFinal: boolean) => {
+          // Handle real-time transcription from Gemini
+          if (isFinal) {
+            console.log('[GdmLiveAudio] Final Gemini transcript:', transcript);
+            this.dispatchEvent(new CustomEvent('user-speech-final', { detail: { text: transcript } }));
+            this.processGeminiResponse(transcript);
+          } else {
+            console.log('[GdmLiveAudio] Interim Gemini transcript:', transcript);
+            this.lastUserInterimTranscript = transcript;
+            this.dispatchEvent(new CustomEvent('user-speech-interim', { detail: { text: transcript } }));
+          }
+        },
+        (error: string) => {
+          console.error('[GdmLiveAudio] Gemini streaming error:', error);
+          this.updateError(`Gemini Live Audio error: ${error}`);
+        }
+      );
+    } catch (error) {
+      console.error('[GdmLiveAudio] Error streaming to Gemini:', error);
+      this.updateError(`Failed to stream audio: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  private async processGeminiResponse(transcript: string): Promise<void> {
+    try {
+      this.updateStatus('Processing with Gemini...');
+      
+      // Generate AI response using Gemini
+      const { generateText } = await import('../../../services/geminiService');
+      const response = await generateText(transcript, this.systemInstruction);
+      
+      if (response && response.trim()) {
+        this.updateStatus('Speaking Gemini response...');
+        console.log('[GdmLiveAudio] Gemini response:', response);
+        
+        // Use Gemini's native TTS instead of browser TTS
+        await this.speakGeminiResponse(response);
+        
+        // Dispatch AI speech event
+        this.dispatchEvent(new CustomEvent('ai-speech-text', {
+          detail: { text: response },
+          bubbles: true
+        }));
+      } else {
+        this.updateError('Empty response from Gemini');
+        this.updateStatus('Ready');
+      }
+    } catch (error) {
+      console.error('[GdmLiveAudio] Error processing Gemini response:', error);
+      this.updateError(`Failed to process response: ${error instanceof Error ? error.message : String(error)}`);
+      this.updateStatus('Ready');
+    }
+  }
+
+  private async speakGeminiResponse(text: string): Promise<void> {
+    try {
+      // Use Gemini's native text-to-speech capabilities
+      console.log('[GdmLiveAudio] Using Gemini native TTS for:', text);
+      
+      // Import the speakText function from geminiService
+      const { speakText } = await import('../../../services/geminiService');
+      
+      // Dispatch AI speaking state
+      this.dispatchEvent(new CustomEvent('ai-speaking-state', { detail: { isAiSpeaking: true } }));
+      
+      // Use Gemini's native TTS
+      await speakText(text);
+      
+      // Dispatch AI speaking completed
+      this.dispatchEvent(new CustomEvent('ai-speaking-state', { detail: { isAiSpeaking: false } }));
+      this.updateStatus('Ready');
+      
+    } catch (error) {
+      console.warn('[GdmLiveAudio] Gemini TTS failed, falling back to browser TTS:', error);
+      // Fallback to browser TTS if Gemini TTS fails
+      this.speakAiResponse(text);
+    }
+  }
+
   public async startRecording(): Promise<void> {
     if (this.isRecording) return;
 
     try {
-      this.updateStatus('Starting speech recognition...');
+      this.updateStatus('Starting Gemini Live Audio...');
       this.isRecording = true;
       this.requestUpdate('isRecording');
 
-      // Initialize audio contexts for visualization
+      // Initialize audio contexts for real audio processing
       await this.initAudioProcessing();
 
-      // Initialize browser-based Speech Recognition (Option B from serverless proxy plan)
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      // Use real Gemini Live Audio API instead of browser Speech Recognition
+      await this.initializeGeminiLiveAudio();
       
-      if (!SpeechRecognition) {
-        throw new Error('Speech recognition not supported in this browser');
-      }
-
-      this.speechRecognition = new SpeechRecognition();
-      this.speechRecognition.continuous = true;
-      this.speechRecognition.interimResults = true;
-      this.speechRecognition.lang = 'en-US';
-
-      this.speechRecognition.onresult = (event: any) => {
-        let interimTranscript = '';
-        let finalTranscript = '';
-
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript;
-          } else {
-            interimTranscript += transcript;
-          }
-        }
-
-        if (interimTranscript) {
-          this.lastUserInterimTranscript = interimTranscript;
-          this.dispatchEvent(new CustomEvent('user-speech-interim', { detail: { text: interimTranscript } }));
-        }
-
-        if (finalTranscript) {
-          console.log('[GdmLiveAudio] Final user speech:', finalTranscript);
-          this.dispatchEvent(new CustomEvent('user-speech-final', { detail: { text: finalTranscript } }));
-          this.lastUserInterimTranscript = "";
-          this.processUserSpeech(finalTranscript); // Send to proxy!
-        }
-      };
-
-      this.speechRecognition.onerror = (event: any) => {
-        console.error('[GdmLiveAudio] Speech Recognition Error:', event.error);
-        this.updateError(`Speech recognition error: ${event.error}`);
-        this.stopRecording();
-      };
-
-      this.speechRecognition.onend = () => {
-        console.log('[GdmLiveAudio] Speech Recognition Ended.');
-        if (this.isRecording) {
-          // Restart if still intended to be recording
-          this.speechRecognition?.start();
-        }
-      };
-
-      this.speechRecognition.start();
-      this.updateStatus('Listening for speech...');
+      this.updateStatus('Connected to Gemini Live Audio');
       this.dispatchEvent(new CustomEvent('recording-state-changed', { detail: { isRecording: true } }));
 
     } catch (error) {
@@ -282,11 +343,6 @@ export class GdmLiveAudio extends LitElement {
     this.isRecording = false;
     this.requestUpdate('isRecording');
 
-    if (this.speechRecognition) {
-      this.speechRecognition.stop();
-      this.speechRecognition = null;
-    }
-
     // Clean up audio processing when stopping
     if (this.audioProcessor) {
       this.audioProcessor.disconnect();
@@ -298,11 +354,14 @@ export class GdmLiveAudio extends LitElement {
       this.mediaStream = null;
     }
 
+    // Clear any remaining audio chunks
+    this.audioChunks = [];
+
     this.dispatchEvent(new CustomEvent('recording-state-changed', { detail: { isRecording: false } }));
-    this.updateStatus('Recording stopped. Ready to listen.');
+    this.updateStatus('Gemini Live Audio stopped. Ready to listen.');
   }
 
-  private async processUserSpeech(text: string) {
+  private async processUserSpeech(text: string): Promise<void> {
     this.updateStatus('Processing user speech...');
     console.log('[GdmLiveAudio] Processing user speech:', text);
     
@@ -317,7 +376,7 @@ export class GdmLiveAudio extends LitElement {
       if (response && response.trim()) {
         this.updateStatus('Speaking response...');
         console.log('[GdmLiveAudio] About to speak response:', response);
-        this.speakAiResponse(response);
+        await this.speakGeminiResponse(response);
         
         // Dispatch AI speech event
         this.dispatchEvent(new CustomEvent('ai-speech-text', {
@@ -359,11 +418,31 @@ export class GdmLiveAudio extends LitElement {
       window.speechSynthesis.cancel();
     }
 
-    console.log('[GdmLiveAudio] Creating new speech utterance');
+    console.log('[GdmLiveAudio] Creating new speech utterance with enhanced voice');
     this.speechUtterance = new SpeechSynthesisUtterance(text);
     this.speechUtterance.lang = 'en-US';
-    this.speechUtterance.rate = 1.0;
+    this.speechUtterance.rate = 1.1; // Slightly faster for more natural flow
     this.speechUtterance.pitch = 1.0;
+    this.speechUtterance.volume = 0.9;
+    
+    // Try to use a more natural voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoices = voices.filter(voice => 
+      voice.lang.startsWith('en') && 
+      (voice.name.includes('Neural') || voice.name.includes('Enhanced') || voice.name.includes('Premium'))
+    );
+    
+    if (preferredVoices.length > 0) {
+      this.speechUtterance.voice = preferredVoices[0];
+      console.log('[GdmLiveAudio] Using enhanced voice:', preferredVoices[0].name);
+    } else {
+      // Fallback to any English voice
+      const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
+      if (englishVoices.length > 0) {
+        this.speechUtterance.voice = englishVoices[0];
+        console.log('[GdmLiveAudio] Using fallback voice:', englishVoices[0].name);
+      }
+    }
 
     this.speechUtterance.onstart = () => {
       console.log('[GdmLiveAudio] AI speaking started (TTS)');

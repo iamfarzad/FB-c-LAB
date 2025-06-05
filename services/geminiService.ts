@@ -210,7 +210,7 @@ export const createChatSession = (systemInstructionText?: string): boolean => {
 // Generate text response via proxy
 export const generateText = async (prompt: string, systemInstruction?: string): Promise<string> => {
   try {
-    const response = await makeProxyRequest('generate', {
+    const response = await makeProxyRequest('/generate', {
       prompt,
       systemInstruction: systemInstruction || getBaseSystemInstruction(),
       model: GEMINI_TEXT_MODEL,
