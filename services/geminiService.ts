@@ -116,15 +116,25 @@ const makeDirectApiCall = async (action: string, data: any): Promise<ProxyRespon
 
 // Utility function to make proxy requests with development fallback
 const makeProxyRequest = async (endpoint: string, data: any): Promise<ProxyResponse> => {
-  // In development, try direct API first if available
+  // In development, ALWAYS try direct API first if available
   if (isDevelopment && hasDirectApiKey) {
     console.log('[geminiService] Using development fallback for:', endpoint);
-    const action = endpoint.replace('/', '');
-    return await makeDirectApiCall(action, data);
+    try {
+      const action = endpoint.replace('/', '');
+      return await makeDirectApiCall(action, data);
+    } catch (error) {
+      console.error('[geminiService] Development fallback failed:', error);
+      // Continue to try proxy if direct API fails
+    }
   }
 
   try {
-    const response = await fetch(`${PROXY_ENDPOINT}/${endpoint}`, {
+    // Fix endpoint path - remove leading slash if present
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    const url = `${PROXY_ENDPOINT}/${cleanEndpoint}`;
+    console.log('[geminiService] Calling proxy URL:', url);
+    
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

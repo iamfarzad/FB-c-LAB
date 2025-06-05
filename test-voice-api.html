@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        button { padding: 10px 15px; margin: 5px; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+    </style>
+</head>
+<body>
+    <h1>Voice API Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Environment Check</h2>
+        <button onclick="checkEnvironment()">Check Environment</button>
+        <div id="env-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. API Test</h2>
+        <button onclick="testAPI()">Test API Call</button>
+        <div id="api-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Speech Recognition Test</h2>
+        <button onclick="testSpeechRecognition()">Test Speech Recognition</button>
+        <div id="speech-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Text-to-Speech Test</h2>
+        <button onclick="testTextToSpeech()">Test Text-to-Speech</button>
+        <div id="tts-result" class="result"></div>
+    </div>
+
+    <script>
+        function checkEnvironment() {
+            const result = document.getElementById('env-result');
+            const checks = [];
+            
+            // Check if we're in development
+            checks.push(`Development mode: ${window.location.hostname === 'localhost'}`);
+            
+            // Check Speech Recognition
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            checks.push(`Speech Recognition: ${SpeechRecognition ? 'Available' : 'Not Available'}`);
+            
+            // Check Speech Synthesis
+            checks.push(`Speech Synthesis: ${window.speechSynthesis ? 'Available' : 'Not Available'}`);
+            
+            // Check Audio Context
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            checks.push(`Audio Context: ${AudioContext ? 'Available' : 'Not Available'}`);
+            
+            result.innerHTML = checks.join('<br>');
+            result.className = 'result success';
+        }
+        
+        async function testAPI() {
+            const result = document.getElementById('api-result');
+            result.innerHTML = 'Testing API...';
+            result.className = 'result';
+            
+            try {
+                // Test the generateText function directly
+                const response = await fetch('/api/gemini-proxy/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: 'Say hello in a friendly way',
+                        model: 'gemini-2.0-flash-001',
+                        systemInstruction: 'You are a helpful AI assistant.'
+                    }),
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.data?.text) {
+                    result.innerHTML = `✅ API Success!<br><strong>Response:</strong> ${data.data.text}`;
+                    result.className = 'result success';
+                } else {
+                    result.innerHTML = `❌ API Error: ${data.error || 'No text in response'}`;
+                    result.className = 'result error';
+                }
+            } catch (error) {
+                result.innerHTML = `❌ API Error: ${error.message}`;
+                result.className = 'result error';
+            }
+        }
+        
+        function testSpeechRecognition() {
+            const result = document.getElementById('speech-result');
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                result.innerHTML = '❌ Speech Recognition not supported';
+                result.className = 'result error';
+                return;
+            }
+            
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+            
+            result.innerHTML = '🎤 Listening... Say something!';
+            result.className = 'result';
+            
+            recognition.onresult = (event) => {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    transcript += event.results[i][0].transcript;
+                }
+                result.innerHTML = `✅ Heard: "${transcript}"`;
+                result.className = 'result success';
+            };
+            
+            recognition.onerror = (event) => {
+                result.innerHTML = `❌ Speech Recognition Error: ${event.error}`;
+                result.className = 'result error';
+            };
+            
+            recognition.start();
+        }
+        
+        function testTextToSpeech() {
+            const result = document.getElementById('tts-result');
+            
+            if (!window.speechSynthesis) {
+                result.innerHTML = '❌ Text-to-Speech not supported';
+                result.className = 'result error';
+                return;
+            }
+            
+            const utterance = new SpeechSynthesisUtterance('Hello! This is a test of text to speech functionality.');
+            utterance.lang = 'en-US';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            
+            utterance.onstart = () => {
+                result.innerHTML = '🔊 Speaking...';
+                result.className = 'result';
+            };
+            
+            utterance.onend = () => {
+                result.innerHTML = '✅ Text-to-Speech completed successfully!';
+                result.className = 'result success';
+            };
+            
+            utterance.onerror = (event) => {
+                result.innerHTML = `❌ Text-to-Speech Error: ${event.error}`;
+                result.className = 'result error';
+            };
+            
+            window.speechSynthesis.speak(utterance);
+        }
+    </script>
+</body>
+</html> 
