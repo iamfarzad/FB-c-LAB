@@ -1,20 +1,21 @@
-
 import React, { useState, useEffect } from 'react';
 import { X, FileText, Download, ChevronDown, ChevronRight, Loader2, MessageSquare, Clock, User, Bot } from 'lucide-react';
 import { Theme } from '../../../types';
 
 interface ChatSidePanelProps {
+  isOpen: boolean;
   theme: Theme;
   onClose: () => void;
   chatHistory: any[];
-  onDownloadTranscript: () => void;
-  onSummarizeChat: () => void;
-  onGenerateFollowUpBrief: () => void;
+  onDownloadTranscript?: () => void;
+  onSummarizeChat?: () => void;
+  onGenerateFollowUpBrief?: () => void;
   summaryData?: any;
   isLoading?: boolean;
 }
 
 export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
+  isOpen,
   theme,
   onClose,
   chatHistory,
@@ -39,12 +40,12 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
 
   // Responsive classes
   const panelBg = theme === Theme.DARK 
-    ? 'bg-black/95 border-white/10' 
-    : 'bg-white/95 border-black/10';
+    ? 'bg-gray-900/95 border-gray-700' 
+    : 'bg-white/95 border-gray-200';
   
   const textColor = theme === Theme.DARK ? 'text-white' : 'text-black';
   const mutedTextColor = theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600';
-  const cardBg = theme === Theme.DARK ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/10';
+  const cardBg = theme === Theme.DARK ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200';
 
   const tabs = [
     { id: 'summary', label: 'Summary', icon: MessageSquare },
@@ -54,41 +55,28 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
 
   return (
     <div className={`
-      fixed inset-y-0 right-0 z-50 w-full sm:w-96 lg:w-[28rem] 
-      ${panelBg} backdrop-blur-xl border-l shadow-2xl
-      flex flex-col overflow-hidden
-      transform transition-transform duration-300 ease-out
+      h-full w-full flex flex-col overflow-hidden
+      ${panelBg} border-l
     `}>
       {/* Enhanced Header */}
       <div className={`
-        flex-shrink-0 px-6 py-4 border-b ${theme === Theme.DARK ? 'border-white/10' : 'border-black/10'}
+        flex-shrink-0 px-4 py-3 border-b ${theme === Theme.DARK ? 'border-gray-700' : 'border-gray-200'}
         bg-gradient-to-r ${theme === Theme.DARK ? 'from-orange-500/10 to-transparent' : 'from-orange-100/50 to-transparent'}
       `}>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
-            <div className={`p-2 rounded-lg ${cardBg} border`}>
-              <FileText size={20} className="text-orange-500" />
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center space-x-2">
+            <div className={`p-1.5 rounded-lg ${cardBg} border`}>
+              <FileText size={16} className="text-orange-500" />
             </div>
             <div>
-              <h3 className={`text-lg font-semibold ${textColor}`}>
-                Conversation Tools
+              <h3 className={`text-sm font-semibold ${textColor}`}>
+                Tools
               </h3>
               <p className={`text-xs ${mutedTextColor}`}>
                 Analysis & insights
               </p>
             </div>
           </div>
-          <button 
-            onClick={onClose}
-            className={`
-              p-2 rounded-lg transition-all duration-200
-              ${theme === Theme.DARK ? 'hover:bg-white/10' : 'hover:bg-black/10'}
-              ${mutedTextColor} hover:text-orange-500
-            `}
-            aria-label="Close panel"
-          >
-            <X size={20} />
-          </button>
         </div>
 
         {/* Tab Navigation */}
@@ -98,7 +86,7 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
               key={id}
               onClick={() => setActiveTab(id as any)}
               className={`
-                flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium
+                flex items-center space-x-1 px-2 py-1.5 rounded text-xs font-medium
                 transition-all duration-200 flex-1 justify-center
                 ${activeTab === id 
                   ? 'bg-orange-500 text-white shadow-lg' 
@@ -106,7 +94,7 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
                 }
               `}
             >
-              <Icon size={16} />
+              <Icon size={12} />
               <span className="hidden sm:inline">{label}</span>
             </button>
           ))}
@@ -117,18 +105,18 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
       <div className="flex-1 overflow-y-auto">
         {/* Summary Tab */}
         {activeTab === 'summary' && (
-          <div className="p-6 space-y-6">
+          <div className="p-4 space-y-4">
             {/* Quick Actions */}
-            <div className="space-y-3">
-              <h4 className={`text-sm font-semibold uppercase tracking-wider ${mutedTextColor}`}>
+            <div className="space-y-2">
+              <h4 className={`text-xs font-semibold uppercase tracking-wider ${mutedTextColor}`}>
                 Quick Actions
               </h4>
-              <div className="grid grid-cols-1 gap-3">
+              <div className="space-y-2">
                 <button
                   onClick={onSummarizeChat}
                   disabled={isLoading || chatHistory.length === 0}
                   className={`
-                    flex items-center justify-center space-x-2 p-3 rounded-lg border
+                    flex items-center justify-center space-x-2 p-2 rounded-lg border w-full
                     transition-all duration-200 ${cardBg}
                     ${isLoading || chatHistory.length === 0 
                       ? 'opacity-50 cursor-not-allowed' 
@@ -137,11 +125,11 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
                   `}
                 >
                   {isLoading ? (
-                    <Loader2 size={16} className="animate-spin text-orange-500" />
+                    <Loader2 size={14} className="animate-spin text-orange-500" />
                   ) : (
-                    <MessageSquare size={16} className="text-orange-500" />
+                    <MessageSquare size={14} className="text-orange-500" />
                   )}
-                  <span className={`text-sm font-medium ${textColor}`}>
+                  <span className={`text-xs font-medium ${textColor}`}>
                     Generate Summary
                   </span>
                 </button>
@@ -150,7 +138,7 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
                   onClick={onGenerateFollowUpBrief}
                   disabled={isLoading || chatHistory.length === 0}
                   className={`
-                    flex items-center justify-center space-x-2 p-3 rounded-lg border
+                    flex items-center justify-center space-x-2 p-2 rounded-lg border w-full
                     transition-all duration-200 ${cardBg}
                     ${isLoading || chatHistory.length === 0 
                       ? 'opacity-50 cursor-not-allowed' 
@@ -159,11 +147,11 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
                   `}
                 >
                   {isLoading ? (
-                    <Loader2 size={16} className="animate-spin text-orange-500" />
+                    <Loader2 size={14} className="animate-spin text-orange-500" />
                   ) : (
-                    <Clock size={16} className="text-orange-500" />
+                    <Clock size={14} className="text-orange-500" />
                   )}
-                  <span className={`text-sm font-medium ${textColor}`}>
+                  <span className={`text-xs font-medium ${textColor}`}>
                     Follow-up Brief
                   </span>
                 </button>
@@ -172,8 +160,8 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
 
             {/* Summary Content */}
             {summaryData && (
-              <div className="space-y-4">
-                <h4 className={`text-sm font-semibold uppercase tracking-wider ${mutedTextColor}`}>
+              <div className="space-y-3">
+                <h4 className={`text-xs font-semibold uppercase tracking-wider ${mutedTextColor}`}>
                   Summary Results
                 </h4>
                 {Object.entries(summaryData).map(([key, value]) => (
@@ -181,33 +169,33 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
                     <button
                       onClick={() => toggleSection(key)}
                       className={`
-                        w-full flex items-center justify-between p-4
+                        w-full flex items-center justify-between p-3
                         hover:bg-orange-500/5 transition-colors duration-200
                       `}
                     >
-                      <span className={`font-medium capitalize ${textColor}`}>
+                      <span className={`font-medium capitalize text-sm ${textColor}`}>
                         {key.replace(/([A-Z])/g, ' $1').trim()}
                       </span>
                       {expandedSections.has(key) ? (
-                        <ChevronDown size={16} className="text-orange-500" />
+                        <ChevronDown size={14} className="text-orange-500" />
                       ) : (
-                        <ChevronRight size={16} className={mutedTextColor} />
+                        <ChevronRight size={14} className={mutedTextColor} />
                       )}
                     </button>
                     {expandedSections.has(key) && (
-                      <div className="px-4 pb-4">
-                        <div className={`text-sm leading-relaxed ${textColor}`}>
+                      <div className="px-3 pb-3">
+                        <div className={`text-xs leading-relaxed ${textColor}`}>
                           {Array.isArray(value) ? (
-                            <ul className="space-y-2">
-                              {value.map((item, index) => (
+                            <ul className="space-y-1">
+                              {(value as any[]).map((item, index) => (
                                 <li key={index} className="flex items-start space-x-2">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-2 flex-shrink-0" />
-                                  <span>{item}</span>
+                                  <div className="w-1 h-1 rounded-full bg-orange-500 mt-1.5 flex-shrink-0" />
+                                  <span>{String(item)}</span>
                                 </li>
                               ))}
                             </ul>
                           ) : (
-                            <p>{value}</p>
+                            <p>{String(value)}</p>
                           )}
                         </div>
                       </div>
@@ -221,52 +209,52 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
 
         {/* Analytics Tab */}
         {activeTab === 'analytics' && (
-          <div className="p-6 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className={`p-4 rounded-lg border ${cardBg}`}>
-                <div className="flex items-center space-x-2 mb-2">
-                  <MessageSquare size={16} className="text-orange-500" />
+          <div className="p-4 space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              <div className={`p-3 rounded-lg border ${cardBg}`}>
+                <div className="flex items-center space-x-1 mb-1">
+                  <MessageSquare size={12} className="text-orange-500" />
                   <span className={`text-xs font-medium uppercase tracking-wider ${mutedTextColor}`}>
                     Messages
                   </span>
                 </div>
-                <div className={`text-2xl font-bold ${textColor}`}>
+                <div className={`text-lg font-bold ${textColor}`}>
                   {chatHistory.length}
                 </div>
               </div>
               
-              <div className={`p-4 rounded-lg border ${cardBg}`}>
-                <div className="flex items-center space-x-2 mb-2">
-                  <User size={16} className="text-orange-500" />
+              <div className={`p-3 rounded-lg border ${cardBg}`}>
+                <div className="flex items-center space-x-1 mb-1">
+                  <User size={12} className="text-orange-500" />
                   <span className={`text-xs font-medium uppercase tracking-wider ${mutedTextColor}`}>
                     User
                   </span>
                 </div>
-                <div className={`text-2xl font-bold ${textColor}`}>
-                  {chatHistory.filter(msg => msg.type === 'user').length}
+                <div className={`text-lg font-bold ${textColor}`}>
+                  {chatHistory.filter(msg => msg.sender === 'user').length}
                 </div>
               </div>
               
-              <div className={`p-4 rounded-lg border ${cardBg}`}>
-                <div className="flex items-center space-x-2 mb-2">
-                  <Bot size={16} className="text-orange-500" />
+              <div className={`p-3 rounded-lg border ${cardBg}`}>
+                <div className="flex items-center space-x-1 mb-1">
+                  <Bot size={12} className="text-orange-500" />
                   <span className={`text-xs font-medium uppercase tracking-wider ${mutedTextColor}`}>
                     Assistant
                   </span>
                 </div>
-                <div className={`text-2xl font-bold ${textColor}`}>
-                  {chatHistory.filter(msg => msg.type === 'assistant').length}
+                <div className={`text-lg font-bold ${textColor}`}>
+                  {chatHistory.filter(msg => msg.sender === 'ai').length}
                 </div>
               </div>
               
-              <div className={`p-4 rounded-lg border ${cardBg}`}>
-                <div className="flex items-center space-x-2 mb-2">
-                  <Clock size={16} className="text-orange-500" />
+              <div className={`p-3 rounded-lg border ${cardBg}`}>
+                <div className="flex items-center space-x-1 mb-1">
+                  <Clock size={12} className="text-orange-500" />
                   <span className={`text-xs font-medium uppercase tracking-wider ${mutedTextColor}`}>
                     Duration
                   </span>
                 </div>
-                <div className={`text-2xl font-bold ${textColor}`}>
+                <div className={`text-lg font-bold ${textColor}`}>
                   {chatHistory.length > 0 ? '5m' : '0m'}
                 </div>
               </div>
@@ -276,16 +264,16 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
 
         {/* Export Tab */}
         {activeTab === 'export' && (
-          <div className="p-6 space-y-6">
-            <div className="space-y-3">
-              <h4 className={`text-sm font-semibold uppercase tracking-wider ${mutedTextColor}`}>
+          <div className="p-4 space-y-4">
+            <div className="space-y-2">
+              <h4 className={`text-xs font-semibold uppercase tracking-wider ${mutedTextColor}`}>
                 Export Options
               </h4>
               <button
                 onClick={onDownloadTranscript}
                 disabled={chatHistory.length === 0}
                 className={`
-                  w-full flex items-center justify-center space-x-2 p-4 rounded-lg border
+                  w-full flex items-center justify-center space-x-2 p-3 rounded-lg border
                   transition-all duration-200 ${cardBg}
                   ${chatHistory.length === 0 
                     ? 'opacity-50 cursor-not-allowed' 
@@ -293,8 +281,8 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
                   }
                 `}
               >
-                <Download size={16} className="text-orange-500" />
-                <span className={`font-medium ${textColor}`}>
+                <Download size={14} className="text-orange-500" />
+                <span className={`text-sm font-medium ${textColor}`}>
                   Download Transcript
                 </span>
               </button>
@@ -305,11 +293,11 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
 
       {/* Footer */}
       <div className={`
-        flex-shrink-0 px-6 py-4 border-t ${theme === Theme.DARK ? 'border-white/10' : 'border-black/10'}
-        ${theme === Theme.DARK ? 'bg-white/5' : 'bg-black/5'}
+        flex-shrink-0 px-4 py-2 border-t ${theme === Theme.DARK ? 'border-gray-700' : 'border-gray-200'}
+        ${theme === Theme.DARK ? 'bg-gray-800/30' : 'bg-gray-50/30'}
       `}>
         <p className={`text-xs text-center ${mutedTextColor}`}>
-          Conversation analysis powered by AI
+          AI-powered analysis
         </p>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './src/App-minimal-test';
+import App from './src/App';
 import './src/index.css';
 
 console.log('index.tsx: Script is loading...');

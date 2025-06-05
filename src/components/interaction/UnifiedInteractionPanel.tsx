@@ -1,8 +1,9 @@
+/// <reference path="../../../global.d.ts" />
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Brain, X, Trash2, Maximize, Minimize, Mic, Send, Paperclip, Info, Lightbulb, Zap, MessageSquare as ChatIcon, ChevronDown, LayoutPanelLeft, PanelLeftClose } from 'lucide-react'; // Updated import
 import { Theme, ChatMessage, MessageSender, MessageType, WebSource } from '../../../types';
 import { FBC_BRAND_NAME, AI_ASSISTANT_NAME } from '../../../constants';
-import { InteractionMessagesArea } from './InteractionMessagesArea';
+import { ChatMessagesArea } from './ChatMessagesArea';
 import { InteractionInputBar } from './InteractionInputBar';
 import { NativeLiveAudioWrapper } from '../liveaudio/NativeLiveAudioWrapper';
 import { ExpandedMessageDisplay } from './ExpandedMessageDisplay';
@@ -238,13 +239,19 @@ export const UnifiedInteractionPanel: React.FC<UnifiedInteractionPanelProps> = (
       <div className={panelInnerClasses}>
         {panelHeader}
         <div className="flex flex-1 overflow-hidden"> 
-          <ChatSidePanel 
-            isOpen={isSidePanelOpen}
-            onClose={toggleSidePanel}
-            theme={theme}
-            chatHistory={chatHistory}
-          />
+          {/* Side Panel - Fixed width when open */}
+          {isSidePanelOpen && (
+            <div className="w-80 flex-shrink-0 border-r border-gray-200 dark:border-gray-700">
+              <ChatSidePanel 
+                isOpen={isSidePanelOpen}
+                onClose={toggleSidePanel}
+                theme={theme}
+                chatHistory={chatHistory}
+              />
+            </div>
+          )}
           
+          {/* Main Chat Area - Takes remaining space */}
           <div className="flex-1 flex flex-col overflow-hidden">
             {isFullscreenInternal && !isPanelVoiceActive && expandedMessageContent && (
                 <div className="flex-grow flex overflow-hidden">
@@ -252,29 +259,29 @@ export const UnifiedInteractionPanel: React.FC<UnifiedInteractionPanelProps> = (
                     <ExpandedMessageDisplay
                       message={expandedMessageContent}
                       theme={theme}
-                      onCollapse={handleCollapseMessageContent}
+                      onClose={handleCollapseMessageContent}
                     />
                   </div>
                   <div className="w-1/3 flex flex-col overflow-hidden">
-                    <InteractionMessagesArea
+                    <ChatMessagesArea
                       messages={chatHistory}
                       theme={theme}
                       isAiThinking={isAiThinking}
                       isPanelFullscreen={isFullscreenInternal}
                       onExpandRequest={handleExpandMessageContent}
-                      onSendMessage={onSendMessage}
+                      onSendMessage={(message) => onSendMessage(message)}
                       isPanelVoiceActive={isPanelVoiceActive}
-                      onFormSubmit={onFormSubmit} // Pass prop
+                      onFormSubmit={onFormSubmit}
                     />
                     <InteractionInputBar
                       theme={theme}
-                      onSendMessage={onSendMessage}
-                      onActivateVoiceMode={handleActivatePanelVoiceMode}
-                      isAiThinking={isAiThinking}
-                      isPanelFullscreen={isFullscreenInternal}
-                      isPanelVoiceActive={isPanelVoiceActive}
-                      onDeactivateVoiceMode={handleDeactivatePanelVoiceMode}
-                      interimTranscript={gdmAudioRef.current?.lastUserInterimTranscript}
+                      onSendMessage={(message, attachments) => onSendMessage(message)}
+                      onVoiceModeToggle={isPanelVoiceActive ? handleDeactivatePanelVoiceMode : handleActivatePanelVoiceMode}
+                      isVoiceMode={isPanelVoiceActive}
+                      isListening={false}
+                      interimTranscript={gdmAudioRef.current?.lastUserInterimTranscript || ''}
+                      isFullscreen={isFullscreenInternal}
+                      disabled={isAiThinking}
                     />
                   </div>
                 </div>
@@ -282,15 +289,15 @@ export const UnifiedInteractionPanel: React.FC<UnifiedInteractionPanelProps> = (
 
             { (!isFullscreenInternal || (isFullscreenInternal && !expandedMessageContent) || isPanelVoiceActive ) && (
               <>
-                <InteractionMessagesArea
+                <ChatMessagesArea
                     messages={chatHistory}
                     theme={theme}
                     isAiThinking={isAiThinking}
                     isPanelFullscreen={isFullscreenInternal}
                     onExpandRequest={handleExpandMessageContent}
-                    onSendMessage={onSendMessage}
+                    onSendMessage={(message) => onSendMessage(message)}
                     isPanelVoiceActive={isPanelVoiceActive}
-                    onFormSubmit={onFormSubmit} // Pass prop
+                    onFormSubmit={onFormSubmit}
                 />
 
                 <div className="flex-shrink-0">
@@ -317,13 +324,13 @@ export const UnifiedInteractionPanel: React.FC<UnifiedInteractionPanelProps> = (
 
                   <InteractionInputBar
                       theme={theme}
-                      onSendMessage={onSendMessage}
-                      onActivateVoiceMode={handleActivatePanelVoiceMode}
-                      isAiThinking={isAiThinking}
-                      isPanelFullscreen={isFullscreenInternal}
-                      isPanelVoiceActive={isPanelVoiceActive}
-                      onDeactivateVoiceMode={handleDeactivatePanelVoiceMode}
+                      onSendMessage={(message, attachments) => onSendMessage(message)}
+                      onVoiceModeToggle={isPanelVoiceActive ? handleDeactivatePanelVoiceMode : handleActivatePanelVoiceMode}
+                      isVoiceMode={isPanelVoiceActive}
+                      isListening={false}
                       interimTranscript={gdmAudioRef.current?.lastUserInterimTranscript || ''}
+                      isFullscreen={isFullscreenInternal}
+                      disabled={isAiThinking}
                   />
                 </div>
               </>
@@ -335,7 +342,7 @@ export const UnifiedInteractionPanel: React.FC<UnifiedInteractionPanelProps> = (
           ref={gdmAudioRef}
           theme={theme.toString()}
           style={{ display: 'none' }}
-      ></gdm-live-audio>
+      />
       
       <FullScreenVoiceOverlay
         isActive={isPanelVoiceActive}

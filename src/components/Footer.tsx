@@ -1,10 +1,11 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { cn } from '../lib/utils';
-import { useTheme } from '../contexts/ThemeContext';
 import { Theme } from '../../types';
 import { FBC_BRAND_NAME } from '../../constants';
+
+interface FooterProps {
+  theme?: Theme;
+}
 
 const footerLinks = [
   {
@@ -52,16 +53,18 @@ const socialLinks = [
   { name: 'Discord', href: 'https://discord.com', icon: 'message-circle' },
 ];
 
-export function Footer() {
-  const { theme } = useTheme();
+export function Footer({ theme = Theme.DARK }: FooterProps) {
   const currentYear = new Date().getFullYear();
 
+  const footerBg = theme === Theme.DARK 
+    ? 'bg-gray-900 border-gray-800 text-white' 
+    : 'bg-white border-gray-200 text-gray-900';
+  
+  const textMuted = theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600';
+  const textHover = theme === Theme.DARK ? 'hover:text-white' : 'hover:text-gray-900';
+
   return (
-    <footer className={cn(
-      'border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60',
-      'transition-colors duration-300',
-      theme === Theme.DARK ? 'border-gray-800' : 'border-gray-200'
-    )}>
+    <footer className={`border-t transition-colors duration-300 ${footerBg}`}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Main Footer Content */}
         <div className="py-12 md:py-16">
@@ -69,11 +72,11 @@ export function Footer() {
             {/* Brand and tagline */}
             <div className="lg:col-span-2 space-y-4">
               <Link to="/" className="inline-block">
-                <span className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                <span className="text-2xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
                   {FBC_BRAND_NAME}
                 </span>
               </Link>
-              <p className="text-muted-foreground text-sm leading-relaxed">
+              <p className={`text-sm leading-relaxed ${textMuted}`}>
                 Empowering developers with AI tools to build the future. Simple, powerful, and open source.
               </p>
               
@@ -85,12 +88,12 @@ export function Footer() {
                     href={social.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    className={`${textMuted} ${textHover} transition-colors`}
                     aria-label={`${social.name} (opens in new tab)`}
                   >
                     <span className="sr-only">{social.name}</span>
                     <div className="h-5 w-5">
-                      {/* Icon would be rendered here based on social.icon */}
+                      {/* Icon placeholder */}
                       <div className="h-full w-full bg-current opacity-70 hover:opacity-100 rounded" />
                     </div>
                   </a>
@@ -102,7 +105,7 @@ export function Footer() {
             <div className="grid grid-cols-2 gap-8 sm:grid-cols-2 lg:col-span-3 lg:grid-cols-4">
               {footerLinks.map((section) => (
                 <div key={section.title}>
-                  <h3 className="text-sm font-semibold text-foreground mb-4">
+                  <h3 className={`text-sm font-semibold mb-4 ${theme === Theme.DARK ? 'text-white' : 'text-gray-900'}`}>
                     {section.title}
                   </h3>
                   <ul className="space-y-3">
@@ -110,7 +113,7 @@ export function Footer() {
                       <li key={link.name}>
                         <Link
                           to={link.href}
-                          className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-block"
+                          className={`text-sm ${textMuted} ${textHover} transition-colors inline-block`}
                         >
                           {link.name}
                         </Link>
@@ -124,35 +127,32 @@ export function Footer() {
 
           {/* Divider */}
           <div 
-            className={cn(
-              'my-8 h-px w-full',
-              theme === Theme.DARK ? 'bg-gray-800' : 'bg-gray-200'
-            )} 
+            className={`my-8 h-px w-full ${theme === Theme.DARK ? 'bg-gray-800' : 'bg-gray-200'}`}
             aria-hidden="true"
           />
 
           {/* Bottom Bar */}
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-muted-foreground text-center md:text-left">
+            <p className={`text-sm text-center md:text-left ${textMuted}`}>
               &copy; {currentYear} {FBC_BRAND_NAME}. All rights reserved.
             </p>
             
             <div className="flex items-center space-x-6">
               <Link 
                 to="/privacy" 
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className={`text-sm ${textMuted} ${textHover} transition-colors`}
               >
                 Privacy Policy
               </Link>
               <Link 
                 to="/terms" 
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className={`text-sm ${textMuted} ${textHover} transition-colors`}
               >
                 Terms of Service
               </Link>
               <Link 
                 to="/cookies" 
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className={`text-sm ${textMuted} ${textHover} transition-colors`}
               >
                 Cookie Policy
               </Link>

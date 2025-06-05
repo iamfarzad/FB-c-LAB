@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Sun, Moon, MessageSquare, Menu, X, Search, ChevronRight } from 'lucide-react'; 
@@ -123,7 +122,7 @@ const EnhancedNavLink: React.FC<{
     <Link
       to={to}
       onClick={onClick}
-      className={`relative px-3 py-2.5 rounded-lg text-xs lg:text-sm font-medium transition-all duration-300 whitespace-nowrap
+      className={`relative px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 whitespace-nowrap
         ${navLinkText} ${navLinkHoverBg} hover:scale-105 backdrop-blur-sm
         group overflow-hidden ${activeClasses}`}
     >
@@ -184,8 +183,6 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
     : `${isScrolled ? 'bg-white/90' : 'bg-white/80'} backdrop-blur-xl border-b border-gray-200/50`;
   
   const headerText = theme === Theme.DARK ? 'text-white' : 'text-gray-900';
-  const navLinkText = theme === Theme.DARK ? 'text-gray-300' : 'text-gray-600';
-  const navLinkHoverBg = theme === Theme.DARK ? 'hover:bg-gray-800/60' : 'hover:bg-gray-100/60';
 
   // Mobile menu styling with enhanced effects
   const mobileMenuBg = theme === Theme.DARK 
@@ -249,8 +246,8 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
               <TechFBCLogo theme={theme} />
             </Link>
 
-            {/* Desktop navigation with enhanced links */}
-            <nav className="hidden md:flex flex-grow justify-center items-center space-x-2 lg:space-x-3">
+            {/* Desktop navigation - NOW VISIBLE ON MOST SCREENS */}
+            <nav className="flex flex-grow justify-center items-center space-x-1 lg:space-x-2 max-w-2xl mx-4">
               {navLinks.map(link => (
                 <EnhancedNavLink
                   key={link.text}
@@ -263,11 +260,11 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
             </nav>
 
             {/* Enhanced action buttons */}
-            <div className="flex items-center space-x-3">
-              {/* Search button */}
+            <div className="flex items-center space-x-2">
+              {/* Search button - hidden on small screens */}
               <button
                 onClick={toggleSearch}
-                className={`relative p-3 rounded-xl transition-all duration-300 flex items-center backdrop-blur-sm
+                className={`hidden md:flex relative p-3 rounded-xl transition-all duration-300 items-center backdrop-blur-sm
                   group hover:scale-110 active:scale-95 border
                   ${theme === Theme.DARK 
                     ? (isSearchOpen 
@@ -280,9 +277,7 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
                 title="Search"
                 aria-label="Search"
               >
-                <Search size={20} className="transition-transform duration-300 group-hover:rotate-12" />
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500/10 to-orange-400/10 
-                  opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <Search size={18} className="transition-transform duration-300 group-hover:rotate-12" />
               </button>
 
               {/* Chat button with enhanced effects */}
@@ -302,7 +297,7 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
                 aria-label={isChatOpen ? "Close AI Assistant Panel" : "Open AI Assistant Panel"}
                 aria-expanded={isChatOpen}
               >
-                <MessageSquare size={20} className="transition-transform duration-300 group-hover:rotate-12" />
+                <MessageSquare size={18} className="transition-transform duration-300 group-hover:rotate-12" />
                 {isChatOpen && (
                   <>
                     <div className="absolute inset-0 rounded-xl bg-orange-500 animate-ping opacity-20" />
@@ -323,22 +318,14 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
                 aria-label="Toggle Theme"
               >
                 <div className="transition-transform duration-500 group-hover:rotate-180">
-                  {theme === Theme.DARK ? <Sun size={20} /> : <Moon size={20} />}
-                </div>
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500/10 to-orange-400/10 
-                  opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                
-                {/* Ripple effect on click */}
-                <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
-                  <span className="absolute inset-0 transform scale-0 rounded-full bg-orange-500/20 
-                    group-active:scale-[5] group-active:opacity-0 transition-all duration-700 origin-center" />
+                  {theme === Theme.DARK ? <Sun size={18} /> : <Moon size={18} />}
                 </div>
               </button>
 
-              {/* Enhanced mobile menu button */}
+              {/* Enhanced mobile menu button - only shows on very small screens */}
               <button
                 onClick={toggleMobileMenu}
-                className={`md:hidden relative p-3 rounded-xl transition-all duration-300 backdrop-blur-sm
+                className={`hidden relative p-3 rounded-xl transition-all duration-300 backdrop-blur-sm
                   group hover:scale-110 active:scale-95 border
                   ${theme === Theme.DARK 
                     ? (isMobileMenuOpen 
@@ -353,10 +340,8 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
                 aria-expanded={isMobileMenuOpen}
               >
                 <div className="transition-transform duration-300">
-                  {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                  {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
                 </div>
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500/10 to-orange-400/10 
-                  opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </button>
             </div>
           </div>
@@ -406,10 +391,10 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
         </div>
       </header>
 
-      {/* Enhanced Mobile Menu with animations */}
+      {/* Enhanced Mobile Menu with animations - hidden since nav is now always visible */}
       <div 
         ref={mobileMenuRef}
-        className={`md:hidden fixed top-[${isScrolled ? '57px' : '73px'}] left-0 right-0 z-50 transform transition-all duration-300 ease-in-out border-b
+        className={`hidden fixed top-[${isScrolled ? '57px' : '73px'}] left-0 right-0 z-50 transform transition-all duration-300 ease-in-out border-b
           ${isMobileMenuOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}
           ${mobileMenuBg}`}
       >
@@ -432,7 +417,7 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
       {/* Enhanced mobile menu backdrop with blur */}
       {isMobileMenuOpen && (
         <div 
-          className="md:hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-40 transition-opacity duration-300"
+          className="hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-40 transition-opacity duration-300"
           onClick={closeMobileMenu}
         />
       )}
