@@ -522,6 +522,122 @@ export const getServiceConfig = () => ({
   }
 });
 
+// --- New Service Functions ---
+
+// Interface for the image generation response data
+export interface GeneratedImageData {
+  text: string;
+  images: { base64Data: string; mimeType: string }[];
+}
+
+/**
+ * Generates an image based on a prompt using the Gemini API proxy.
+ * @param prompt The text prompt for image generation.
+ * @param model Optional model name (e.g., 'gemini-2.0-flash-preview-image-generation' or an Imagen model).
+ * @returns A promise that resolves to the generated image data.
+ */
+export const generateImage = async (prompt: string, model?: string): Promise<GeneratedImageData> => {
+  try {
+    const requestBody: any = { prompt };
+    if (model) {
+      requestBody.model = model;
+    }
+    const response = await makeProxyRequest('/generateImage', requestBody);
+
+    if (response.success && response.data) {
+      return response.data as GeneratedImageData;
+    } else {
+      throw new Error(response.error || 'Failed to generate image: No data in response');
+    }
+  } catch (error) {
+    console.error('[GeminiService] generateImage error:', error);
+    throw new Error(`Failed to generate image: ${error instanceof Error ? error.message : String(error)}`);
+  }
+};
+
+// Interface for grounded search response data
+export interface GroundedSearchResult {
+  text: string;
+  sources?: WebSource[]; // sources might be optional depending on if search was used
+}
+
+/**
+ * Performs a grounded search using the Gemini API proxy.
+ * @param prompt The search prompt.
+ * @param conversationHistory Optional conversation history for contextual search.
+ * @returns A promise that resolves to the search result.
+ */
+export const performGroundedSearch = async (prompt: string, conversationHistory?: ChatMessage[]): Promise<GroundedSearchResult> => {
+  try {
+    const requestBody: any = { prompt };
+    if (conversationHistory) {
+      requestBody.conversationHistory = conversationHistory;
+    }
+    // We can also pass a specific model if needed, e.g., one known for good function calling
+    // requestBody.model = 'gemini-2.0-flash-exp';
+
+    const response = await makeProxyRequest('/searchWeb', requestBody);
+
+    if (response.success && response.data) {
+      return response.data as GroundedSearchResult;
+    } else {
+      throw new Error(response.error || 'Failed to perform grounded search: No data in response');
+    }
+  } catch (error) {
+    console.error('[GeminiService] performGroundedSearch error:', error);
+    throw new Error(`Failed to perform grounded search: ${error instanceof Error ? error.message : String(error)}`);
+  }
+};
+
+// Interface for documentation generation response
+export interface DocumentationResult {
+  text: string;
+  // Potentially add usage or other metadata if returned by proxy
+}
+
+/**
+ * Generates documentation using the Gemini API proxy.
+ * @param prompt The detailed prompt for documentation generation.
+ * @param systemInstruction Optional system instruction to guide the AI's persona.
+ * @param generationConfig Optional generation configuration (e.g., temperature, maxOutputTokens).
+ * @param model Optional model name. Defaults to GEMINI_TEXT_MODEL.
+ * @returns A promise that resolves to the generated documentation text.
+ */
+export const generateDocumentation = async (
+  prompt: string,
+  systemInstruction?: string,
+  generationConfig?: any, // Using 'any' for flexibility with GenerationConfig structure
+  model: string = GEMINI_TEXT_MODEL
+): Promise<DocumentationResult> => {
+  try {
+    const requestBody: any = {
+      prompt,
+      model, // Use the provided model or default
+    };
+    if (systemInstruction) {
+      requestBody.systemInstruction = systemInstruction;
+    }
+    if (generationConfig) {
+      requestBody.generationConfig = generationConfig;
+    }
+
+    // Using '/generateTextOnly' as it's simpler for single-shot doc generation.
+    // For iterative doc building, a chat-based approach might be better,
+    // potentially evolving this function or adding another.
+    const response = await makeProxyRequest('/generateTextOnly', requestBody);
+
+    if (response.success && response.data?.text) {
+      return { text: response.data.text };
+    } else {
+      throw new Error(response.error || 'Failed to generate documentation: No text in response');
+    }
+  } catch (error) {
+    console.error('[GeminiService] generateDocumentation error:', error);
+    throw new Error(`Failed to generate documentation: ${error instanceof Error ? error.message : String(error)}`);
+  }
+};
+
+
 // Text-to-speech using browser TTS (Gemini Live Audio requires WebSocket)
 export const speakText = async (text: string): Promise<void> => {
   console.log('[GeminiService] Using browser TTS for:', text);
@@ -557,18 +673,19 @@ export const speakText = async (text: string): Promise<void> => {
 };
 
 // Play audio data from Gemini
-const playGeminiAudio = async (audioData: string): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    try {
-      const audio = new Audio(`data:audio/wav;base64,${audioData}`);
-      audio.onended = () => resolve();
-      audio.onerror = () => reject(new Error('Failed to play Gemini audio'));
-      audio.play();
-    } catch (error) {
-      reject(error);
-    }
-  });
-};
+// const playGeminiAudio = async (audioData: string): Promise<void> => {
+//   return new Promise((resolve, reject) => {
+// This function seems unused currently, commenting out to avoid dead code unless needed later.
+//     try {
+//       const audio = new Audio(`data:audio/wav;base64,${audioData}`);
+//       audio.onended = () => resolve();
+//       audio.onerror = () => reject(new Error('Failed to play Gemini audio'));
+//       audio.play();
+//     } catch (error) {
+//       reject(error);
+//     }
+//   });
+// };
 
 // Stop text-to-speech
 export const stopSpeaking = (): void => {
