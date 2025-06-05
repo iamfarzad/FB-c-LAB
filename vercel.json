@@ -1,11 +1,12 @@
 {
   "version": 2,
-  "builds": [
-    { "src": "package.json", "use": "@vercel/static-build" },
-    { "src": "api/gemini-proxy.ts", "use": "@vercel/node" }
-  ],
+  "functions": {
+    "api/gemini-proxy.ts": {
+      "runtime": "@vercel/node"
+    }
+  },
   "rewrites": [
-    { "source": "/api/gemini-proxy/(.*)", "destination": "/api/gemini-proxy" }
+    { "source": "/api/gemini-proxy/(.*)", "destination": "/api/gemini-proxy?action=$1" }
   ],
   "headers": [
     {
