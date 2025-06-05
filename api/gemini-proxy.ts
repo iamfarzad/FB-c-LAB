@@ -472,7 +472,7 @@ async function handleGenerateImage(body: ProxyRequestBody) {
     const ai = getGeminiAI();
     const model = ai.getGenerativeModel({ model: body.model });
 
-    const result = await model.generateContent([{
+    await model.generateContent([{
       text: body.prompt
     }]);
 
@@ -806,18 +806,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           break;
         case 'generateChatResponse':
           result = await handleGenerateChatResponse(body);
-          if (result.success && result.usage) {
-            trackUsage(clientIP, body.model || 'gemini-2.0-flash-001', result.usage.inputTokens, result.usage.outputTokens);
-          }
           break;
         case 'generateImage':
           result = await handleGenerateImage(body);
           break;
         case 'searchWeb':
           result = await handleSearchWeb(body);
-          if (result.success && result.usage) {
-            trackUsage(clientIP, body.model || 'gemini-2.0-flash-001', result.usage.inputTokens, result.usage.outputTokens);
-          }
           break;
         case 'generateTextOnly':
           result = await handleGenerateTextOnly(body);
@@ -827,27 +821,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           break;
         case 'generateContentWithImageAndText':
           result = await handleGenerateContentWithImageAndText(body);
-          if (result.success && result.usage) {
-            trackUsage(clientIP, body.model || 'gemini-2.0-flash-001', result.usage.inputTokens, result.usage.outputTokens);
-          }
           break;
         case 'summarizeChatHistory':
           result = await handleSummarizeChatHistory(body);
-          if (result.success && result.usage) {
-            trackUsage(clientIP, body.model || 'gemini-2.0-flash-001', result.usage.inputTokens, result.usage.outputTokens);
-          }
           break;
         case 'generateInternalBrief':
           result = await handleGenerateInternalBrief(body);
-          if (result.success && result.usage) {
-            trackUsage(clientIP, body.model || 'gemini-2.0-flash-001', result.usage.inputTokens, result.usage.outputTokens);
-          }
           break;
         case 'generateClientSummaryForPdf':
           result = await handleGenerateClientSummaryForPdf(body);
-          if (result.success && result.usage) {
-            trackUsage(clientIP, body.model || 'gemini-2.0-flash-001', result.usage.inputTokens, result.usage.outputTokens);
-          }
           break;
         default:
           // Default to generate if no action specified
