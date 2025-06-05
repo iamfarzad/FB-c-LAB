@@ -873,9 +873,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           result = await handleGenerateClientSummaryForPdf(body);
           break;
         case 'streamAudio':
+        case 'stream-audio':
           result = await handleStreamAudio(body);
           break;
         case 'speakText':
+        case 'speak-text':
           result = await handleSpeakText(body);
           break;
         default:
