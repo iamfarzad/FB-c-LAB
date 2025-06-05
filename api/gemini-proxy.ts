@@ -2,7 +2,7 @@
 // Serverless proxy for secure Gemini API access
 // Compatible with Vercel deployment
 
-import { GoogleGenerativeAI, GenerateContentResponse, Part, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, Part } from "@google/generative-ai";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Rate limiting storage (in production, use Redis or database)
@@ -498,47 +498,32 @@ async function handleGenerateImage(body: ProxyRequestBody) {
 
 async function handleSearchWeb(body: ProxyRequestBody) {
   try {
-    if (!body.prompt || !body.model) {
-      return { success: false, error: 'Missing query or model for web search' };
-    }
-
-    const ai = getGeminiAI();
-    const model = ai.getGenerativeModel({ 
-      model: body.model,
-      systemInstruction: body.systemInstruction || 'Search the web and provide comprehensive information.',
-      tools: [{ googleSearchRetrieval: {} }],
+    const genAI = getGeminiAI();
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.0-flash-exp',
       safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-      ]
+      ],
     });
 
-    const result = await model.generateContent(body.prompt);
-    const response = await result.response;
+    const searchPrompt = `Search the web for: ${body.prompt}. Provide comprehensive results with sources.`;
     
-    // Extract grounding sources
-    const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks
-      ?.map((chunk: any) => chunk.web && ({ uri: chunk.web.uri, title: chunk.web.title }))
-      .filter(Boolean) || [];
-
-    const inputTokens = estimateTokens(body.prompt);
-    const outputTokens = estimateTokens(response.text());
+    const result = await model.generateContent(searchPrompt);
+    const response = await result.response;
+    const text = response.text();
 
     return {
       success: true,
-      data: {
-        text: response.text(),
-        sources
-      },
-      usage: { inputTokens, outputTokens }
+      data: { text }
     };
-  } catch (error: any) {
-    console.error('Web search error:', error);
+  } catch (error) {
+    console.error('[Proxy] Web search error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to search web'
+      error: error instanceof Error ? error.message : 'Web search failed'
     };
   }
 }
@@ -554,10 +539,10 @@ async function handleGenerateTextOnly(body: ProxyRequestBody) {
       model: body.model,
       systemInstruction: body.systemInstruction,
       safetySettings: [
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
       ]
     });
 
@@ -583,158 +568,153 @@ async function handleGenerateTextOnly(body: ProxyRequestBody) {
 
 async function handleGenerateContentWithImageAndText(body: ProxyRequestBody) {
   try {
-    if (!body.prompt || !body.image || !body.mimeType || !body.model) {
-      return { success: false, error: 'Missing data for multimodal content generation' };
-    }
-
-    const ai = getGeminiAI();
-    const model = ai.getGenerativeModel({ 
-      model: body.model,
+    const genAI = getGeminiAI();
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.0-flash-exp',
       safetySettings: [
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      ]
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+      ],
     });
 
-    const imagePart = {
-      inlineData: {
-        mimeType: body.mimeType,
-        data: body.image
-      }
-    };
+    const parts: Part[] = [];
+    
+    if (body.text) {
+      parts.push({ text: body.text });
+    }
+    
+    if (body.image && body.mimeType) {
+      parts.push({
+        inlineData: {
+          data: body.image,
+          mimeType: body.mimeType
+        }
+      });
+    }
 
-    const result = await model.generateContent([body.prompt, imagePart]);
+    const result = await model.generateContent(parts);
     const response = await result.response;
-
-    const inputTokens = estimateTokens(body.prompt) + 1000; // Estimate for image
-    const outputTokens = estimateTokens(response.text());
+    const text = response.text();
 
     return {
       success: true,
-      data: { text: response.text() },
-      usage: { inputTokens, outputTokens }
+      data: { text }
     };
-  } catch (error: any) {
-    console.error('Multimodal generation error:', error);
+  } catch (error) {
+    console.error('[Proxy] Content generation error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to generate multimodal content'
+      error: error instanceof Error ? error.message : 'Content generation failed'
     };
   }
 }
 
 async function handleSummarizeChatHistory(body: ProxyRequestBody) {
   try {
-    if (!body.prompt || !body.model) {
-      return { success: false, error: 'Missing prompt or model for chat history summarization' };
-    }
-
-    const ai = getGeminiAI();
-    const model = ai.getGenerativeModel({ 
-      model: body.model,
-      systemInstruction: 'You are an expert at summarizing conversations. Provide clear, concise summaries.',
+    const genAI = getGeminiAI();
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.0-flash-exp',
       safetySettings: [
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      ]
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+      ],
     });
 
-    const result = await model.generateContent(body.prompt);
-    const response = await result.response;
+    const conversationText = body.conversationHistory?.map(msg => 
+      `${msg.sender}: ${msg.text}`
+    ).join('\n') || '';
 
-    const inputTokens = estimateTokens(body.prompt);
-    const outputTokens = estimateTokens(response.text());
+    const prompt = `Please provide a concise summary of this conversation:\n\n${conversationText}`;
+    
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
 
     return {
       success: true,
-      data: { text: response.text() },
-      usage: { inputTokens, outputTokens }
+      data: { summary: text }
     };
-  } catch (error: any) {
-    console.error('Chat history summarization error:', error);
+  } catch (error) {
+    console.error('[Proxy] Chat summarization error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to summarize chat history'
+      error: error instanceof Error ? error.message : 'Chat summarization failed'
     };
   }
 }
 
 async function handleGenerateInternalBrief(body: ProxyRequestBody) {
   try {
-    if (!body.prompt || !body.model) {
-      return { success: false, error: 'Missing prompt or model for internal brief generation' };
-    }
-
-    const ai = getGeminiAI();
-    const model = ai.getGenerativeModel({ 
-      model: body.model,
-      systemInstruction: 'Generate detailed internal briefs and follow-up recommendations based on conversation context.',
+    const genAI = getGeminiAI();
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.0-flash-exp',
       safetySettings: [
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      ]
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+      ],
     });
 
-    const result = await model.generateContent(body.prompt);
-    const response = await result.response;
+    const conversationText = body.conversationHistory?.map(msg => 
+      `${msg.sender}: ${msg.text}`
+    ).join('\n') || '';
 
-    const inputTokens = estimateTokens(body.prompt);
-    const outputTokens = estimateTokens(response.text());
+    const prompt = `Generate an internal brief based on this conversation:\n\n${conversationText}`;
+    
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
 
     return {
       success: true,
-      data: { text: response.text() },
-      usage: { inputTokens, outputTokens }
+      data: { brief: text }
     };
-  } catch (error: any) {
-    console.error('Internal brief generation error:', error);
+  } catch (error) {
+    console.error('[Proxy] Internal brief generation error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to generate internal brief'
+      error: error instanceof Error ? error.message : 'Internal brief generation failed'
     };
   }
 }
 
 async function handleGenerateClientSummaryForPdf(body: ProxyRequestBody) {
   try {
-    if (!body.prompt || !body.model) {
-      return { success: false, error: 'Missing prompt or model for client summary generation' };
-    }
-
-    const ai = getGeminiAI();
-    const model = ai.getGenerativeModel({ 
-      model: body.model,
-      systemInstruction: 'Generate professional client-facing summaries suitable for PDF reports.',
+    const genAI = getGeminiAI();
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.0-flash-exp',
       safetySettings: [
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      ]
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+      ],
     });
 
-    const result = await model.generateContent(body.prompt);
-    const response = await result.response;
+    const conversationText = body.conversationHistory?.map(msg => 
+      `${msg.sender}: ${msg.text}`
+    ).join('\n') || '';
 
-    const inputTokens = estimateTokens(body.prompt);
-    const outputTokens = estimateTokens(response.text());
+    const prompt = `Generate a client summary for PDF based on this conversation:\n\n${conversationText}`;
+    
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
 
     return {
       success: true,
-      data: { text: response.text() },
-      usage: { inputTokens, outputTokens }
+      data: { summary: text }
     };
-  } catch (error: any) {
-    console.error('Client summary generation error:', error);
+  } catch (error) {
+    console.error('[Proxy] Client summary generation error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to generate client summary'
+      error: error instanceof Error ? error.message : 'Client summary generation failed'
     };
   }
 }
