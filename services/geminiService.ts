@@ -16,46 +16,72 @@ interface ProxyResponse {
   error?: string;
 }
 
+// --- Module-scoped environment configuration variables ---
+let _isDevelopment = false;
+let _hasDirectApiKey = false;
+let _apiKey: string | undefined = undefined;
+let _GoogleGenerativeAI: any = null;
+let _isGoogleAILoaded = false;
+
+// --- Initialization Function ---
+export const initializeGeminiService = (config: {
+  isDev: boolean;
+  apiKey?: string;
+  googleAI?: any;
+}) => {
+  _isDevelopment = config.isDev;
+  _apiKey = config.apiKey;
+  _hasDirectApiKey = !!config.apiKey;
+
+  if (config.googleAI) {
+    _GoogleGenerativeAI = config.googleAI;
+    _isGoogleAILoaded = true;
+    console.log('Google AI SDK provided via initializeGeminiService');
+  } else {
+    _GoogleGenerativeAI = null;
+    _isGoogleAILoaded = false;
+  }
+  // Reset any other relevant state if this function can be called multiple times.
+  // For example, if loadGoogleAI dynamically imports, ensure it can re-evaluate.
+};
+
+
 // Serverless proxy configuration
-const PROXY_ENDPOINT = '/api/gemini-proxy'; // Your serverless function endpoint
-
-// Development fallback - check if we can use direct API
-const isDevelopment = import.meta.env.DEV;
-const hasDirectApiKey = import.meta.env.VITE_API_KEY || import.meta.env.GEMINI_API_KEY_SERVER;
-
-// Import Google AI for development fallback
-let GoogleGenerativeAI: any = null;
-let isGoogleAILoaded = false;
+const PROXY_ENDPOINT = '/api/gemini-proxy';
 
 const loadGoogleAI = async () => {
-  if (!GoogleGenerativeAI && isDevelopment && hasDirectApiKey) {
+  // Use module-scoped variables. Attempt dynamic import only if not already provided.
+  if (!_isGoogleAILoaded && _isDevelopment && _hasDirectApiKey && !_GoogleGenerativeAI) {
     try {
+      // This dynamic import is for the scenario where googleAI was NOT passed during initialization
       const module = await import('@google/generative-ai');
-      GoogleGenerativeAI = module.GoogleGenerativeAI;
-      isGoogleAILoaded = true;
-      console.log('Google AI SDK loaded for development fallback');
+      _GoogleGenerativeAI = module.GoogleGenerativeAI;
+      _isGoogleAILoaded = true;
+      console.log('Google AI SDK loaded dynamically for development fallback');
     } catch (error) {
-      console.warn('Google AI SDK not available for development fallback:', error);
+      console.warn('Google AI SDK not available for development fallback (dynamic import failed):', error);
     }
+  } else if (_isGoogleAILoaded && _GoogleGenerativeAI) {
+    // Already loaded (either provided or dynamically imported prior)
+    // console.log('Google AI SDK already available.');
   }
 };
 
 // Development fallback function
 const makeDirectApiCall = async (action: string, data: any): Promise<ProxyResponse> => {
-  // Load Google AI SDK if not already loaded
-  if (!isGoogleAILoaded) {
+  if (!_isGoogleAILoaded) { // Ensure SDK is loaded/attempted if needed
     await loadGoogleAI();
   }
   
-  if (!GoogleGenerativeAI || !hasDirectApiKey) {
+  if (!_GoogleGenerativeAI || !_hasDirectApiKey || !_apiKey) {
     return {
       success: false,
-      error: 'Development fallback not available - deploy to test proxy'
+      error: 'Development fallback not available - SDK or API key missing or not configured for dev.'
     };
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(import.meta.env.VITE_API_KEY || import.meta.env.GEMINI_API_KEY_SERVER);
+    const genAI = new _GoogleGenerativeAI(_apiKey);
     
     switch (action) {
       case 'generate': {
@@ -127,7 +153,6 @@ const makeProxyRequest = async (endpoint: string, data: any): Promise<ProxyRespo
 
     if (!response.ok) {
       if (response.status === 429) {
-        // Rate limited
         const errorData = await response.json().catch(() => ({}));
         throw new Error(`Rate limit exceeded. ${errorData.error || 'Please try again later.'}`);
       }
@@ -138,8 +163,7 @@ const makeProxyRequest = async (endpoint: string, data: any): Promise<ProxyRespo
   } catch (error) {
     console.warn('Proxy request failed, trying development fallback:', error);
     
-    // Try development fallback
-    if (isDevelopment && hasDirectApiKey) {
+    if (_isDevelopment && _hasDirectApiKey) {
       const action = endpoint.replace('/', '');
       return await makeDirectApiCall(action, data);
     }
@@ -169,15 +193,11 @@ const getBaseSystemInstruction = (): string => {
   Always maintain a professional tone while being approachable and helpful.`;
 };
 
-// Chat session management (simplified for proxy)
 export const createChatSession = (systemInstructionText?: string): boolean => {
-  // For proxy mode, we don't create local sessions
-  // Session management is handled server-side
-  console.log("Using serverless proxy mode - session managed server-side");
+  console.log("Using serverless proxy mode - session managed server-side"); // This might change based on _isDevelopment
   return true;
 };
 
-// Generate text response via proxy
 export const generateText = async (prompt: string, systemInstruction?: string): Promise<string> => {
   try {
     const response = await makeProxyRequest('/generate', {
@@ -197,12 +217,15 @@ export const generateText = async (prompt: string, systemInstruction?: string): 
   }
 };
 
-// Stream text response via proxy
 export const streamText = async (
   prompt: string, 
   onChunk: (chunk: string) => void,
   systemInstruction?: string
 ): Promise<void> => {
+  // Note: Streaming with dev fallback via makeDirectApiCall is not implemented.
+  // This function will always try the proxy or fail if proxy fails and dev fallback is expected.
+  // To support dev fallback for streaming, makeDirectApiCall would need a 'stream' action.
+  // For now, tests will focus on proxy streaming.
   try {
     const response = await fetch(`${PROXY_ENDPOINT}/stream`, {
       method: 'POST',
@@ -253,15 +276,13 @@ export const streamText = async (
   }
 };
 
-// Analyze image via proxy
 export const analyzeImage = async (imageFile: File, prompt: string = "Describe this image"): Promise<string> => {
   try {
-    // Convert image to base64
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
-        resolve(result.split(',')[1]); // Remove data:image/...;base64, prefix
+        resolve(result.split(',')[1]);
       };
       reader.onerror = reject;
       reader.readAsDataURL(imageFile);
@@ -285,7 +306,6 @@ export const analyzeImage = async (imageFile: File, prompt: string = "Describe t
   }
 };
 
-// Generate follow-up brief via proxy
 export const generateFollowUpBrief = async (conversationHistory: ChatMessage[]): Promise<string> => {
   try {
     const response = await makeProxyRequest('/follow-up', {
@@ -304,10 +324,8 @@ export const generateFollowUpBrief = async (conversationHistory: ChatMessage[]):
   }
 };
 
-// Summarize chat history via proxy
 export const summarizeChatHistory = async (conversationHistory: ChatMessage[]): Promise<string> => {
   try {
-    // Create a summary prompt
     const historyText = conversationHistory.map((msg: ChatMessage) => 
       `${msg.sender}: ${msg.text}`
     ).join('\n');
@@ -331,17 +349,12 @@ export const summarizeChatHistory = async (conversationHistory: ChatMessage[]): 
   }
 };
 
-// Audio streaming via proxy (placeholder for future implementation)
 export const streamAudio = async (
   audioChunks: Float32Array[],
   onTranscript: (transcript: string, isFinal: boolean) => void,
   onError: (error: string) => void
 ): Promise<void> => {
   try {
-    // For now, we'll use browser-based speech recognition as recommended in the plan
-    // This is more secure than streaming audio through the proxy
-    
-    // Check if browser supports speech recognition
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
@@ -367,8 +380,6 @@ export const streamAudio = async (
     };
 
     recognition.start();
-    
-    // Store recognition instance for cleanup
     (streamAudio as any).currentRecognition = recognition;
     
   } catch (error) {
@@ -377,7 +388,6 @@ export const streamAudio = async (
   }
 };
 
-// Stop audio streaming
 export const stopAudioStream = (): void => {
   const recognition = (streamAudio as any).currentRecognition;
   if (recognition) {
@@ -386,7 +396,6 @@ export const stopAudioStream = (): void => {
   }
 };
 
-// Check proxy health with development fallback
 export const checkProxyHealth = async (): Promise<boolean> => {
   try {
     const response = await fetch(`${PROXY_ENDPOINT}/health`, {
@@ -402,8 +411,7 @@ export const checkProxyHealth = async (): Promise<boolean> => {
   } catch (error) {
     console.warn('Proxy health check failed, trying development fallback:', error);
     
-    // Try development fallback
-    if (isDevelopment && hasDirectApiKey) {
+    if (_isDevelopment && _hasDirectApiKey) {
       try {
         const result = await makeDirectApiCall('health', {});
         return result.success === true;
@@ -412,15 +420,13 @@ export const checkProxyHealth = async (): Promise<boolean> => {
         return false;
       }
     }
-    
     return false;
   }
 };
 
-// Get service configuration
 export const getServiceConfig = () => ({
-  mode: 'serverless-proxy',
-  endpoint: PROXY_ENDPOINT,
+  mode: (_isDevelopment && _hasDirectApiKey) ? 'direct' : 'serverless-proxy', // Mode can now be dynamic
+  endpoint: PROXY_ENDPOINT, // Remains proxy endpoint, direct calls use their own logic
   models: {
     text: GEMINI_TEXT_MODEL,
     image: GEMINI_IMAGE_MODEL
@@ -429,12 +435,11 @@ export const getServiceConfig = () => ({
     textGeneration: true,
     imageAnalysis: true,
     streaming: true,
-    audioStreaming: true, // Browser-based STT/TTS
+    audioStreaming: true,
     followUpBriefs: true
   }
 });
 
-// Text-to-speech using browser API (recommended approach for voice)
 export const speakText = async (text: string): Promise<void> => {
   return new Promise((resolve, reject) => {
     if (!('speechSynthesis' in window)) {
@@ -450,7 +455,6 @@ export const speakText = async (text: string): Promise<void> => {
   });
 };
 
-// Stop text-to-speech
 export const stopSpeaking = (): void => {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
