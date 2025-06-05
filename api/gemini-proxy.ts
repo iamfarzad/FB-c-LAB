@@ -11,10 +11,10 @@ const usageStats = new Map<string, { requests: number; tokens: number; cost: num
 
 // Rate limiting configuration
 const RATE_LIMIT = {
-  maxRequests: process.env.NODE_ENV === 'production' ? 10 : 50, // More lenient in dev
+  maxRequests: process.env.NODE_ENV === 'production' ? 60 : 100, // Increased for voice functionality
   windowMs: 60 * 1000, // 1 minute
-  maxRequestsPerDay: process.env.NODE_ENV === 'production' ? 100 : 1000, // More lenient in dev
-  maxCostPerDay: process.env.NODE_ENV === 'production' ? 5.00 : 50.00, // $5 prod, $50 dev
+  maxRequestsPerDay: process.env.NODE_ENV === 'production' ? 1000 : 2000, // Increased for production use
+  maxCostPerDay: process.env.NODE_ENV === 'production' ? 10.00 : 50.00, // Increased to $10 prod
 };
 
 // Cost estimation (approximate Gemini pricing)
