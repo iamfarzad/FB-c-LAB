@@ -719,41 +719,14 @@ async function handleGenerateClientSummaryForPdf(body: ProxyRequestBody) {
 
 async function handleStreamAudio(body: ProxyRequestBody) {
   try {
-    if (!body.audioData || !body.model) {
-      return { success: false, error: 'Missing audioData or model for audio streaming' };
-    }
-
-    const ai = getGeminiAI();
-    
-    // Use Gemini Live Audio model for native voice processing
-    const model = ai.getGenerativeModel({ 
-      model: body.model || 'gemini-2.0-flash-live-001',
-      safetySettings: [
-        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-      ]
-    });
-
-    // Process audio with Gemini Live Audio API
-    const audioPart: Part = {
-      inlineData: {
-        mimeType: body.mimeType || 'audio/wav',
-        data: body.audioData
-      }
-    };
-
-    const textPart: Part = { text: 'Please transcribe this audio and provide a natural response.' };
-    
-    const result = await model.generateContent([textPart, audioPart]);
-    const response = await result.response;
-    
+    // Live Audio streaming requires WebSocket connection, not REST API
     return {
-      success: true,
+      success: false,
+      error: 'Live Audio streaming requires WebSocket connection. Use Gemini Live API instead of REST API.',
       data: {
-        transcript: response.text(),
-        isFinal: true
+        message: 'Voice functionality requires direct client-side API access or WebSocket Live API',
+        suggestion: 'Use browser-based speech recognition + text generation + browser TTS for production',
+        documentation: 'https://ai.google.dev/gemini-api/docs/live'
       }
     };
   } catch (error: any) {
@@ -767,39 +740,15 @@ async function handleStreamAudio(body: ProxyRequestBody) {
 
 async function handleSpeakText(body: ProxyRequestBody) {
   try {
-    if (!body.text || !body.model) {
-      return { success: false, error: 'Missing text or model for speech generation' };
-    }
-
-    const ai = getGeminiAI();
-    
-    // Use Gemini Live Audio model for native TTS
-    const model = ai.getGenerativeModel({ 
-      model: body.model || 'gemini-2.0-flash-live-001',
-      safetySettings: [
-        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-      ]
-    });
-
-    // Generate speech using Gemini's native voice capabilities
-    // Note: This is a placeholder - actual implementation would use Gemini's TTS API
-    // For now, we'll return the text and let the client handle TTS
-    const speechPrompt = `Convert this text to natural speech: "${body.text}"`;
-    
-    const result = await model.generateContent(speechPrompt);
-    await result.response; // Process the response but don't store it
-    
-    // In a real implementation, this would return audio data
-    // For now, return success to indicate the text was processed
+    // TTS via REST API is not available - requires Live API WebSocket or browser TTS
     return {
-      success: true,
+      success: false,
+      error: 'Text-to-speech requires WebSocket Live API or browser speechSynthesis.',
       data: {
-        text: body.text,
-        audioData: null, // Would contain base64 audio in real implementation
-        message: 'Speech generation processed (fallback to browser TTS)'
+        text: body.text || '',
+        message: 'Use browser speechSynthesis API for production TTS',
+        fallback: 'Browser TTS recommended',
+        documentation: 'https://ai.google.dev/gemini-api/docs/live'
       }
     };
   } catch (error: any) {

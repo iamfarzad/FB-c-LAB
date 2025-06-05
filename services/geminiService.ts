@@ -397,7 +397,7 @@ export const streamAudio = async (
   onError: (error: string) => void
 ): Promise<void> => {
   try {
-    console.log('[GeminiService] Starting Gemini Live Audio streaming...');
+    console.log('[GeminiService] Attempting Gemini Live Audio streaming...');
     
     // Convert audio chunks to WAV format for Gemini
     const audioBlob = await convertAudioChunksToWav(audioChunks);
@@ -421,17 +421,20 @@ export const streamAudio = async (
     }
     
     if (!response.success) {
-      throw new Error(response.error || 'Failed to stream audio to Gemini');
+      // Expected error - Live Audio requires WebSocket, not REST API
+      console.log('[GeminiService] Live Audio not available via REST API, using browser speech recognition');
+      onError('Live Audio requires WebSocket connection. Using browser speech recognition instead.');
+      return;
     }
     
-    // Handle streaming response
+    // Handle streaming response (if somehow successful)
     if (response.data?.transcript) {
       onTranscript(response.data.transcript, response.data.isFinal || false);
     }
     
   } catch (error) {
-    console.error('[GeminiService] Error in Gemini Live Audio streaming:', error);
-    onError(`Gemini Live Audio error: ${error instanceof Error ? error.message : String(error)}`);
+    console.log('[GeminiService] Expected error - Live Audio requires WebSocket:', error);
+    onError('Live Audio requires WebSocket connection. Using browser speech recognition instead.');
   }
 };
 
@@ -557,51 +560,38 @@ export const getServiceConfig = () => ({
   }
 });
 
-// Text-to-speech using Gemini's native voice (Live Audio API)
+// Text-to-speech using browser TTS (Gemini Live Audio requires WebSocket)
 export const speakText = async (text: string): Promise<void> => {
-  try {
-    console.log('[GeminiService] Using Gemini native TTS for:', text);
-    
-    const endpoint = '/speak-text';
-    const data = {
-      text,
-      model: 'gemini-2.0-flash-live-001',
-      voice: 'natural' // Use Gemini's natural voice
-    };
-    
-    let response: ProxyResponse;
-    
-    if (isDevelopment && hasDirectApiKey && forceDirectApi) {
-      response = await makeDirectApiCall('speak-text', data);
-    } else {
-      response = await makeProxyRequest(endpoint, data);
+  console.log('[GeminiService] Using browser TTS for:', text);
+  
+  // Use browser TTS directly since Gemini Live Audio requires WebSocket connection
+  return new Promise((resolve, reject) => {
+    if (!('speechSynthesis' in window)) {
+      reject(new Error('Text-to-speech not supported in this browser'));
+      return;
     }
-    
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to generate speech with Gemini');
-    }
-    
-    // Play the audio response from Gemini
-    if (response.data?.audioData) {
-      await playGeminiAudio(response.data.audioData);
-    }
-    
-  } catch (error) {
-    console.warn('[GeminiService] Gemini TTS failed, falling back to browser TTS:', error);
-    // Fallback to browser TTS
-    return new Promise((resolve, reject) => {
-      if (!('speechSynthesis' in window)) {
-        reject(new Error('Text-to-speech not supported in this browser'));
-        return;
-      }
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.onend = () => resolve();
-      utterance.onerror = (event) => reject(new Error(`Speech synthesis error: ${event.error}`));
-      
-      window.speechSynthesis.speak(utterance);
-    });
-  }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.onend = () => resolve();
+    utterance.onerror = (event) => reject(new Error(`Speech synthesis error: ${event.error}`));
+    
+    // Use a more natural voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(voice => 
+      voice.name.includes('Google') || 
+      voice.name.includes('Enhanced') ||
+      voice.name.includes('Premium')
+    );
+    
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+    
+    utterance.rate = 0.9; // Slightly slower for better clarity
+    utterance.pitch = 1.0;
+    
+    window.speechSynthesis.speak(utterance);
+  });
 };
 
 // Play audio data from Gemini
