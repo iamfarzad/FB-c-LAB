@@ -19,23 +19,15 @@ import { Theme } from '../../../types';
 interface InteractionInputBarProps {
   theme: Theme;
   onSendMessage: (message: string, attachments?: File[]) => void;
-  onVoiceModeToggle: () => void;
-  isVoiceMode: boolean;
-  isListening: boolean;
-  interimTranscript?: string;
   isFullscreen?: boolean;
   disabled?: boolean;
   placeholder?: string;
   maxLength?: number;
 }
 
-export const InteractionInputBar: React.FC<InteractionInputBarProps> = ({
+export const InteractionInputBar: React.FC<Omit<InteractionInputBarProps, 'onVoiceModeToggle' | 'isVoiceMode' | 'isListening' | 'interimTranscript'>> = ({
   theme,
   onSendMessage,
-  onVoiceModeToggle,
-  isVoiceMode,
-  isListening,
-  interimTranscript = '',
   isFullscreen = false,
   disabled = false,
   placeholder = "Type your message...",
@@ -81,7 +73,7 @@ export const InteractionInputBar: React.FC<InteractionInputBarProps> = ({
 
   // Handle message sending
   const handleSend = useCallback(() => {
-    const finalMessage = message.trim() || interimTranscript.trim();
+    const finalMessage = message.trim();
     if (finalMessage && !disabled) {
       onSendMessage(finalMessage, attachments.length > 0 ? attachments : undefined);
       setMessage('');
@@ -90,7 +82,7 @@ export const InteractionInputBar: React.FC<InteractionInputBarProps> = ({
         textareaRef.current.style.height = 'auto';
       }
     }
-  }, [message, interimTranscript, attachments, disabled, onSendMessage]);
+  }, [message, attachments, disabled, onSendMessage]);
 
   // Handle key press
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -152,7 +144,7 @@ export const InteractionInputBar: React.FC<InteractionInputBarProps> = ({
     { icon: Video, label: 'Video', accept: 'video/*', color: 'text-red-500' }
   ];
 
-  const displayMessage = message || interimTranscript;
+  const displayMessage = message;
   const canSend = (displayMessage.trim().length > 0 || attachments.length > 0) && !disabled;
   const characterCount = displayMessage.length;
   const isNearLimit = characterCount > maxLength * 0.8;
@@ -217,165 +209,62 @@ export const InteractionInputBar: React.FC<InteractionInputBarProps> = ({
         </div>
       )}
 
-      {/* Voice Mode Indicator */}
-      {isVoiceMode && (
-        <div className={`
-          mb-3 flex items-center justify-center space-x-2 p-3 rounded-lg
-          ${theme === Theme.DARK ? 'bg-orange-500/10 border-orange-500/20' : 'bg-orange-100/50 border-orange-200'}
-          border
-        `}>
+      {/* Text Input Only (voice mode parked) */}
+      <div className="flex-1 relative">
+        <textarea
+          ref={textareaRef}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={handleKeyPress}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          onCompositionStart={() => setIsComposing(true)}
+          onCompositionEnd={() => setIsComposing(false)}
+          placeholder={placeholder}
+          disabled={disabled}
+          maxLength={maxLength}
+          className={`
+            w-full px-4 py-3 rounded-xl border resize-none
+            ${inputBg} ${textColor} ${placeholderColor}
+            focus:outline-none focus:ring-2 focus:ring-orange-500/20
+            transition-all duration-200
+            ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+          `}
+          style={{ minHeight: '48px' }}
+          rows={1}
+        />
+        
+        {/* Character Counter */}
+        {characterCount > 0 && (
           <div className={`
-            w-3 h-3 rounded-full
-            ${isListening ? 'bg-red-500 animate-pulse' : 'bg-orange-500'}
-          `} />
-          <span className={`text-sm font-medium ${textColor}`}>
-            {isListening ? 'Listening...' : 'Voice mode active'}
-          </span>
-          {interimTranscript && (
-            <span className={`text-sm ${theme === Theme.DARK ? 'text-gray-300' : 'text-gray-600'}`}>
-              "{interimTranscript}"
-            </span>
+            absolute bottom-2 right-2 text-xs
+            ${isNearLimit ? 'text-orange-500' : theme === Theme.DARK ? 'text-gray-400' : 'text-gray-500'}
+          `}>
+            {characterCount}/{maxLength}
+          </div>
+        )}
+      </div>
+
+      {/* Send Button Only */}
+      <div className="flex space-x-2">
+        <button
+          onClick={handleSend}
+          disabled={!canSend}
+          className={`
+            p-2.5 sm:p-3 rounded-xl transition-all duration-200
+            ${canSend 
+              ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-lg transform hover:scale-105' 
+              : `${buttonBg} opacity-50 cursor-not-allowed ${theme === Theme.DARK ? 'text-gray-400' : 'text-gray-500'}`
+            }
+          `}
+          title="Send message (Enter)"
+        >
+          {disabled ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <Send size={18} />
           )}
-        </div>
-      )}
-
-      {/* Main Input Container */}
-      <div 
-        className={`
-          relative flex items-end space-x-2 sm:space-x-3
-          ${isFocused ? 'ring-2 ring-orange-500/20 rounded-xl' : ''}
-          transition-all duration-200
-        `}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        {/* Attachment Button */}
-        <div className="relative" ref={attachmentMenuRef}>
-          <button
-            onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-            disabled={disabled}
-            className={`
-              p-2.5 sm:p-3 rounded-xl transition-all duration-200
-              ${disabled ? 'opacity-50 cursor-not-allowed' : `${buttonBg} hover:text-orange-500`}
-              ${textColor}
-            `}
-            title="Attach files"
-          >
-            <Paperclip size={18} />
-          </button>
-
-          {/* Attachment Menu */}
-          {showAttachmentMenu && (
-            <div className={`
-              absolute bottom-full left-0 mb-2 p-2 rounded-xl border shadow-xl
-              ${containerBg} backdrop-blur-xl z-20
-              min-w-[200px]
-            `}>
-              <div className="space-y-1">
-                {attachmentOptions.map((option, index) => (
-                  <button
-                    key={index}
-                    onClick={() => {
-                      fileInputRef.current?.click();
-                      setShowAttachmentMenu(false);
-                    }}
-                    className={`
-                      w-full flex items-center space-x-3 px-3 py-2 rounded-lg
-                      transition-colors duration-200
-                      ${theme === Theme.DARK ? 'hover:bg-white/10' : 'hover:bg-black/10'}
-                    `}
-                  >
-                    <option.icon size={18} className={option.color} />
-                    <span className={`text-sm ${textColor}`}>{option.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Text Input */}
-        <div className="flex-1 relative">
-          <textarea
-            ref={textareaRef}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={handleKeyPress}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            onCompositionStart={() => setIsComposing(true)}
-            onCompositionEnd={() => setIsComposing(false)}
-            placeholder={isVoiceMode ? "Speak or type your message..." : placeholder}
-            disabled={disabled}
-            maxLength={maxLength}
-            className={`
-              w-full px-4 py-3 rounded-xl border resize-none
-              ${inputBg} ${textColor} ${placeholderColor}
-              focus:outline-none focus:ring-2 focus:ring-orange-500/20
-              transition-all duration-200
-              ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-            `}
-            style={{ minHeight: '48px' }}
-            rows={1}
-          />
-          
-          {/* Character Counter */}
-          {characterCount > 0 && (
-            <div className={`
-              absolute bottom-2 right-2 text-xs
-              ${isNearLimit ? 'text-orange-500' : theme === Theme.DARK ? 'text-gray-400' : 'text-gray-500'}
-            `}>
-              {characterCount}/{maxLength}
-            </div>
-          )}
-        </div>
-
-        {/* Voice/Send Button */}
-        <div className="flex space-x-2">
-          {/* Voice Toggle */}
-          <button
-            onClick={onVoiceModeToggle}
-            disabled={disabled}
-            className={`
-              p-2.5 sm:p-3 rounded-xl transition-all duration-200
-              ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-              ${isVoiceMode 
-                ? 'bg-orange-500 text-white shadow-lg' 
-                : `${buttonBg} ${textColor} hover:text-orange-500`
-              }
-            `}
-            title={isVoiceMode ? "Disable voice mode" : "Enable voice mode"}
-          >
-            {isListening ? (
-              <Square size={18} />
-            ) : isVoiceMode ? (
-              <MicOff size={18} />
-            ) : (
-              <Mic size={18} />
-            )}
-          </button>
-
-          {/* Send Button */}
-          <button
-            onClick={handleSend}
-            disabled={!canSend}
-            className={`
-              p-2.5 sm:p-3 rounded-xl transition-all duration-200
-              ${canSend 
-                ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-lg transform hover:scale-105' 
-                : `${buttonBg} opacity-50 cursor-not-allowed ${theme === Theme.DARK ? 'text-gray-400' : 'text-gray-500'}`
-              }
-            `}
-            title="Send message (Enter)"
-          >
-            {disabled ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <Send size={18} />
-            )}
-          </button>
-        </div>
+        </button>
       </div>
 
       {/* Hidden File Input */}

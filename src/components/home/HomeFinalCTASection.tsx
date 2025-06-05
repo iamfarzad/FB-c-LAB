@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bot, ArrowRight, Sparkles } from 'lucide-react';
 import { Theme } from '../../../types';
-import { FlickeringGrid } from '../ui/FlickeringGrid';
+// Background pattern is now handled by Layout component
 
 interface HomeFinalCTASectionProps {
   theme: Theme;
@@ -18,29 +18,7 @@ export const HomeFinalCTASection: React.FC<HomeFinalCTASectionProps> = ({ theme,
       className={`relative py-32 lg:py-40 text-center transition-all duration-700 overflow-hidden
         ${theme === Theme.DARK ? 'bg-black' : 'bg-white'}`}
     >
-      {/* Enhanced background effects */}
-      <div className="absolute inset-0">
-        <FlickeringGrid
-          className="absolute inset-0 z-0"
-          squareSize={2}
-          gridGap={14}
-          maxOpacity={0.08}
-          flickerChance={0.01}
-          width={1920}
-          height={1080}
-          theme={theme === Theme.DARK ? 'dark' : 'light'}
-          blur={1}
-        />
-        
-        <div 
-          className="absolute inset-0 z-10"
-          style={{
-            background: theme === Theme.DARK 
-              ? 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.8) 70%)' 
-              : 'radial-gradient(circle at center, transparent 0%, rgba(255,255,255,0.8) 70%)'
-          }}
-        />
-      </div>
+      {/* Background pattern is handled by Layout component */}
 
       <div className="container mx-auto px-6 relative z-20">
         <div className="max-w-4xl mx-auto">

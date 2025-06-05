@@ -1,15 +1,12 @@
 /// <reference path="../../../global.d.ts" />
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Brain, X, Trash2, Maximize, Minimize, Mic, Send, Paperclip, Info, Lightbulb, Zap, MessageSquare as ChatIcon, ChevronDown, LayoutPanelLeft, PanelLeftClose } from 'lucide-react'; // Updated import
+import { Brain, X, Trash2, Maximize, Minimize, Mic, Send, Paperclip, Info, Lightbulb, Zap, MessageSquare, ChevronDown, LayoutPanelLeft, PanelLeftClose, Settings, Maximize2, Minimize2 } from 'lucide-react'; // Updated import
 import { Theme, ChatMessage, MessageSender, MessageType, WebSource } from '../../../types';
 import { FBC_BRAND_NAME, AI_ASSISTANT_NAME } from '../../../constants';
 import { ChatMessagesArea } from './ChatMessagesArea';
 import { InteractionInputBar } from './InteractionInputBar';
-import { NativeLiveAudioWrapper } from '../liveaudio/NativeLiveAudioWrapper';
+import { ChatSidePanel } from './ChatSidePanel';
 import { ExpandedMessageDisplay } from './ExpandedMessageDisplay';
-import { ChatSidePanel } from './ChatSidePanel'; // Import ChatSidePanel
-import { GdmLiveAudio } from '../liveaudio/GdmLiveAudio';
-import { FullScreenVoiceOverlay } from '../liveaudio/FullScreenVoiceOverlay'; 
 
 interface UnifiedInteractionPanelProps {
   isOpen: boolean;
@@ -19,13 +16,11 @@ interface UnifiedInteractionPanelProps {
   onSendMessage: (messageText: string, imageBase64?: string, imageMimeType?: string) => Promise<void>;
   onClearChat: () => void;
   isAiThinking: boolean;
-  onLiveUserSpeechFinal: (text: string) => void;
-  onLiveAiSpeechText: (text: string) => void;
   initialUserMessage?: string;
   onFormSubmit: (messageId: string, formData: Record<string, string>) => void; // Added prop
 }
 
-export const UnifiedInteractionPanel: React.FC<UnifiedInteractionPanelProps> = ({
+export const UnifiedInteractionPanel: React.FC<Omit<UnifiedInteractionPanelProps, 'onLiveUserSpeechFinal' | 'onLiveAiSpeechText'> > = ({
   isOpen,
   onClose,
   theme,
@@ -33,144 +28,43 @@ export const UnifiedInteractionPanel: React.FC<UnifiedInteractionPanelProps> = (
   onSendMessage,
   onClearChat,
   isAiThinking,
-  onLiveUserSpeechFinal,
-  onLiveAiSpeechText,
   initialUserMessage,
-  onFormSubmit, // Destructure prop
+  onFormSubmit,
 }) => {
-  const [isFullscreenInternal, setIsFullscreenInternal] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [expandedMessageContent, setExpandedMessageContent] = useState<ChatMessage | null>(null);
-  const [isPanelVoiceActive, setIsPanelVoiceActive] = useState(false);
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false); 
-  const gdmAudioRef = useRef<GdmLiveAudio>(null);
-  const [processedInitialMessage, setProcessedInitialMessage] = useState(false);
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [summaryData, setSummaryData] = useState<any>(null);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [quickReplies] = useState([
+    "Tell me about your AI consulting services",
+    "What workshops do you offer?",
+    "How can AI help my business?",
+    "I'd like to schedule a consultation",
+    "What's your experience with AI implementation?"
+  ]);
 
+  // Auto-send initial message
   useEffect(() => {
-    if (isOpen && initialUserMessage && !processedInitialMessage) {
-      if (initialUserMessage.toLowerCase().includes("activate voice mode")) {
-        setIsPanelVoiceActive(true);
-      } else {
-        if (!isPanelVoiceActive) {
-            onSendMessage(initialUserMessage);
-        }
-      }
-      setProcessedInitialMessage(true);
+    if (isOpen && initialUserMessage && chatHistory.length === 0) {
+      onSendMessage(initialUserMessage);
     }
-    if (!isOpen) {
-        setProcessedInitialMessage(false);
-        if (isPanelVoiceActive) {
-           handleDeactivatePanelVoiceMode();
-        }
-        setIsSidePanelOpen(false); 
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, initialUserMessage, processedInitialMessage, onSendMessage, isPanelVoiceActive]);
-
-
-  useEffect(() => {
-    // Check if the custom element is defined
-    if (!customElements.get('gdm-live-audio')) {
-      console.warn('[UnifiedInteractionPanel] gdm-live-audio custom element not defined');
-    }
-    const gdmElement = gdmAudioRef.current;
-    if (gdmElement) {
-      const handleUserSpeechFinalEvent = (event: Event) => {
-        try {
-          onLiveUserSpeechFinal((event as CustomEvent<{text: string}>).detail.text);
-        } catch (error) {
-          console.error('[UnifiedInteractionPanel ERROR] user-speech-final event error:', error);
-        }
-      };
-      const handleAiSpeechTextEvent = (event: Event) => {
-        try {
-          onLiveAiSpeechText((event as CustomEvent<{text: string}>).detail.text);
-        } catch (error) {
-          console.error('[UnifiedInteractionPanel ERROR] ai-speech-text event error:', error);
-        }
-      };
-      try {
-        (gdmElement as unknown as EventTarget).addEventListener('user-speech-final', handleUserSpeechFinalEvent as EventListener);
-        (gdmElement as unknown as EventTarget).addEventListener('ai-speech-text', handleAiSpeechTextEvent as EventListener);
-        return () => {
-          (gdmElement as unknown as EventTarget).removeEventListener('user-speech-final', handleUserSpeechFinalEvent as EventListener);
-          (gdmElement as unknown as EventTarget).removeEventListener('ai-speech-text', handleAiSpeechTextEvent as EventListener);
-        };
-      } catch (error) {
-        console.error('[UnifiedInteractionPanel ERROR] Failed to add event listeners:', error);
-      }
-    }
-  }, [onLiveUserSpeechFinal, onLiveAiSpeechText]);
-
-  const handleActivatePanelVoiceMode = useCallback(() => {
-    console.log('[UnifiedInteractionPanel DEBUG] handleActivatePanelVoiceMode called');
-    setIsPanelVoiceActive(true);
-    console.log('[UnifiedInteractionPanel DEBUG] isPanelVoiceActive set to true');
-    
-    const tryStartRecording = (attempts = 0) => {
-      console.log(`[UnifiedInteractionPanel DEBUG] tryStartRecording attempt ${attempts + 1}`);
-      const audioElement = gdmAudioRef.current;
-      
-      console.log('[UnifiedInteractionPanel DEBUG] gdmAudioRef.current:', {
-        exists: !!audioElement,
-        hasStartRecording: audioElement && typeof audioElement.startRecording === 'function',
-        elementType: audioElement ? audioElement.constructor.name : 'null',
-        isCustomElement: audioElement ? audioElement.tagName === 'GDM-LIVE-AUDIO' : false
-      });
-      
-      if (audioElement && typeof audioElement.startRecording === 'function') {
-        try {
-          console.log('[UnifiedInteractionPanel DEBUG] startRecording() is available, calling now');
-          audioElement.startRecording();
-          console.log('[UnifiedInteractionPanel DEBUG] startRecording() called successfully');
-        } catch (error) {
-          console.error('[UnifiedInteractionPanel ERROR] Failed to start recording:', error);
-        }
-      } else if (attempts < 15) {
-        console.log(`[UnifiedInteractionPanel DEBUG] Audio element not ready, retrying in 100ms (attempt ${attempts + 1}/15)`);
-        setTimeout(() => tryStartRecording(attempts + 1), 100);
-      } else {
-        console.error('[UnifiedInteractionPanel ERROR] startRecording() not available after 15 attempts');
-        console.log('[UnifiedInteractionPanel DEBUG] Final state:', {
-          gdmAudioRefExists: !!gdmAudioRef.current,
-          customElementRegistered: !!customElements.get('gdm-live-audio'),
-          elementInDOM: document.querySelector('gdm-live-audio')
-        });
-      }
-    };
-    setTimeout(() => tryStartRecording(), 200);
-  }, []);
-
-  const handleDeactivatePanelVoiceMode = useCallback(() => {
-    setIsPanelVoiceActive(false);
-    try {
-      if (gdmAudioRef.current && typeof gdmAudioRef.current.stopRecording === 'function') {
-        gdmAudioRef.current.stopRecording();
-      }
-    } catch (error) {
-      console.error('[UnifiedInteractionPanel ERROR] Failed to stop recording:', error);
-    }
-  }, []);
+  }, [isOpen, initialUserMessage, chatHistory.length, onSendMessage]);
 
   const handleClearChatAndSession = () => {
     onClearChat();
-    if (gdmAudioRef.current) {
-      gdmAudioRef.current.resetSession();
-    }
   };
 
   const handleExpandMessageContent = (message: ChatMessage) => {
-    if (isFullscreenInternal) {
-      setExpandedMessageContent(message);
-    }
+    setExpandedMessageContent(message);
   };
+
   const handleCollapseMessageContent = () => setExpandedMessageContent(null);
 
-  const quickReplies = [
-    { text: `About ${FBC_BRAND_NAME} services`, icon: Info, prompt: `Tell me about ${FBC_BRAND_NAME}'s services.` },
-    { text: "AI/LLM Workshops", icon: Lightbulb, prompt: "What AI/LLM workshops do you offer?" },
-    { text: "Custom AI Consulting", icon: Zap, prompt: "Can you describe your custom AI consulting?" },
-    { text: `Book a consultation`, icon: ChatIcon, prompt: `I'd like to book a consultation.`},
-  ];
+  const handleDownloadTranscript = () => {
+    // Implementation for downloading transcript
+    console.log('Download transcript');
+  };
 
   const handleQuickReply = (promptText: string) => {
     onSendMessage(promptText);
@@ -181,175 +75,204 @@ export const UnifiedInteractionPanel: React.FC<UnifiedInteractionPanelProps> = (
   };
 
   const toggleFullscreen = () => {
-    setIsFullscreenInternal(!isFullscreenInternal);
+    setIsFullscreen(!isFullscreen);
+  };
+
+  // Handle input bar message sending
+  const handleInputBarSendMessage = (message: string, attachments?: File[]) => {
+    // For now, just send the text message
+    onSendMessage(message);
   };
 
   if (!isOpen) return null;
 
-  const panelWrapperClasses = `
-    fixed z-[100] transition-all duration-300 ease-in-out
-    ${isFullscreenInternal
-      ? `inset-0 rounded-none ${theme === Theme.DARK ? 'bg-[var(--card-bg-dark)]' : 'bg-[var(--card-bg-light)]'}` 
-      : `top-4 bottom-4 right-4 md:top-6 md:bottom-6 md:right-6 lg:top-8 lg:bottom-8 lg:right-8 rounded-xl shadow-2xl border ${theme === Theme.DARK ? 'bg-[var(--card-bg-dark)] text-[var(--text-dark)] border-[var(--border-dark)]' : 'bg-[var(--card-bg-light)] text-[var(--text-light)] border-[var(--border-light)]'}`
-    }
-  `;
-
-  const panelInnerClasses = `
-    w-full h-full flex flex-col
-    ${isFullscreenInternal ? `max-w-full max-h-full ${theme === Theme.DARK ? 'bg-[var(--card-bg-dark)]' : 'bg-[var(--card-bg-light)]'}` : (theme === Theme.DARK ? 'bg-[var(--card-bg-dark)]' : 'bg-white')}
-    ${isFullscreenInternal ? 'rounded-none' : 'rounded-xl'}
-     overflow-hidden
-  `;
-  
-  const panelHeaderBgClass = isFullscreenInternal
-    ? (theme === Theme.DARK ? 'bg-black/80 backdrop-blur-sm border-[var(--border-dark)]' : 'bg-white/80 backdrop-blur-sm border-[var(--border-light)]')
-    : (theme === Theme.DARK ? 'bg-gray-800 border-[var(--border-dark)]' : 'bg-gray-100 border-[var(--border-light)]');
-
-  const panelHeaderTextColorClass = theme === Theme.DARK ? 'text-[var(--text-dark)]' : 'text-[var(--text-light)]';
-
-  const panelHeader = (
-    <header className={`flex-shrink-0 p-3 sm:p-4 flex justify-between items-center border-b ${panelHeaderBgClass}`}>
-      <div className="flex items-center">
-        <button 
-          onClick={toggleSidePanel} 
-          className={`p-1.5 sm:p-2 mr-1 sm:mr-2 rounded-full transition-colors ${theme === Theme.DARK ? 'hover:bg-gray-700' : 'hover:bg-gray-300'} ${panelHeaderTextColorClass}`} 
-          title={isSidePanelOpen ? "Close Tools Panel" : "Open Tools Panel"}
-          aria-label={isSidePanelOpen ? "Close Tools Panel" : "Open Tools Panel"}
-        >
-          {isSidePanelOpen ? <PanelLeftClose size={18}/> : <LayoutPanelLeft size={18} />}
-        </button>
-        <h2 id="interaction-panel-title" className={`text-md sm:text-lg font-semibold flex items-center gap-1.5 sm:gap-2 ${panelHeaderTextColorClass}`}>
-          <Brain size={20} style={{ color: 'var(--accent-color)' }} /> {AI_ASSISTANT_NAME}
-        </h2>
-      </div>
-      <div className="flex items-center space-x-1 sm:space-x-2">
-        <button onClick={handleClearChatAndSession} className={`p-1.5 sm:p-2 rounded-full transition-colors ${theme === Theme.DARK ? 'hover:bg-gray-700' : 'hover:bg-gray-300'} ${panelHeaderTextColorClass}`} title="Clear Chat" aria-label="Clear Chat"><Trash2 size={18} /></button>
-        <button onClick={toggleFullscreen} className={`p-1.5 sm:p-2 rounded-full transition-colors ${theme === Theme.DARK ? 'hover:bg-gray-700' : 'hover:bg-gray-300'} ${panelHeaderTextColorClass}`} title={isFullscreenInternal ? "Exit Fullscreen" : "Enter Fullscreen"} aria-label={isFullscreenInternal ? "Exit Fullscreen" : "Enter Fullscreen"}>
-          {isFullscreenInternal ? <Minimize size={18} /> : <Maximize size={18} />}
-        </button>
-        <button onClick={onClose} className={`p-1.5 sm:p-2 rounded-full transition-colors ${theme === Theme.DARK ? 'hover:bg-gray-700' : 'hover:bg-gray-300'} ${panelHeaderTextColorClass}`} title="Close Panel" aria-label="Close Panel"><X size={18} /></button>
-      </div>
-    </header>
-  );
-
-  const showQuickReplies = chatHistory.length > 0 && chatHistory.length <= 2 && !isAiThinking && chatHistory.filter(m => m.sender === MessageSender.AI && !m.isLoading).length > 0 && !isPanelVoiceActive;
-
   return (
-    <div className={panelWrapperClasses} role="dialog" aria-modal="true" aria-labelledby="interaction-panel-title">
-      <div className={panelInnerClasses}>
-        {panelHeader}
-        <div className="flex flex-1 overflow-hidden"> 
-          {/* Side Panel - Fixed width when open */}
-          {isSidePanelOpen && (
-            <div className="w-80 flex-shrink-0 border-r border-gray-200 dark:border-gray-700">
-              <ChatSidePanel 
-                isOpen={isSidePanelOpen}
-                onClose={toggleSidePanel}
-                theme={theme}
-                chatHistory={chatHistory}
-              />
+    <>
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-300"
+        onClick={onClose}
+      />
+
+      {/* Main Panel */}
+      <div className={`fixed z-50 transition-all duration-300 ease-out ${
+        isFullscreen 
+          ? 'inset-0' 
+          : 'top-4 right-4 bottom-4 w-full max-w-md sm:max-w-lg lg:max-w-xl'
+      }`}>
+        <div className={`h-full flex flex-col glass border shadow-2xl ${
+          theme === Theme.DARK 
+            ? 'border-white/20 bg-black/90' 
+            : 'border-black/20 bg-white/90'
+        } animate-fade-in-scale`}>
+          
+          {/* Enhanced Header */}
+          <div className={`flex items-center justify-between p-4 border-b ${
+            theme === Theme.DARK ? 'border-white/10' : 'border-black/10'
+          }`}>
+            <div className="flex items-center space-x-3">
+              <div className={`p-2 rounded-lg ${
+                theme === Theme.DARK ? 'bg-orange-500/10' : 'bg-orange-500/10'
+              }`}>
+                <MessageSquare size={20} className="text-orange-500" />
+              </div>
+              <div>
+                <h2 className={`font-semibold ${
+                  theme === Theme.DARK ? 'text-white' : 'text-black'
+                }`}>
+                  AI Assistant
+                </h2>
+                <p className={`text-xs ${
+                  theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                  {chatHistory.length} messages
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              {/* Fullscreen Toggle */}
+              <button
+                onClick={toggleFullscreen}
+                className={`touch-target p-2 rounded-lg transition-all duration-200 hover-lift ${
+                  theme === Theme.DARK 
+                    ? 'hover:bg-white/10 text-gray-400 hover:text-white' 
+                    : 'hover:bg-black/10 text-gray-600 hover:text-black'
+                } focus-ring`}
+                aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              >
+                {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+              </button>
+
+              {/* Side Panel Toggle */}
+              <button
+                onClick={toggleSidePanel}
+                className={`touch-target p-2 rounded-lg transition-all duration-200 hover-lift ${
+                  isSidePanelOpen
+                    ? 'bg-orange-500/20 text-orange-500'
+                    : theme === Theme.DARK 
+                      ? 'hover:bg-white/10 text-gray-400 hover:text-white' 
+                      : 'hover:bg-black/10 text-gray-600 hover:text-black'
+                } focus-ring`}
+                aria-label="Toggle side panel"
+              >
+                <Settings size={18} />
+              </button>
+
+              {/* Close Button */}
+              <button
+                onClick={onClose}
+                className={`touch-target p-2 rounded-lg transition-all duration-200 hover-lift ${
+                  theme === Theme.DARK 
+                    ? 'hover:bg-white/10 text-gray-400 hover:text-white' 
+                    : 'hover:bg-black/10 text-gray-600 hover:text-black'
+                } focus-ring`}
+                aria-label="Close chat"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Messages Area */}
+          <div className="flex-1 overflow-hidden">
+            <ChatMessagesArea
+              theme={theme}
+              messages={chatHistory}
+              isAiThinking={isAiThinking}
+              isPanelFullscreen={isFullscreen}
+              onExpandRequest={handleExpandMessageContent}
+              onFormSubmit={onFormSubmit}
+            />
+          </div>
+
+          {/* Quick Replies */}
+          {chatHistory.length === 0 && (
+            <div className={`p-4 border-t ${
+              theme === Theme.DARK ? 'border-white/10' : 'border-black/10'
+            }`}>
+              <p className={`text-sm mb-3 ${
+                theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                Quick start:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {quickReplies.slice(0, 3).map((reply, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleQuickReply(reply)}
+                    className={`px-3 py-2 text-xs rounded-lg border transition-all duration-200 hover-lift ${
+                      theme === Theme.DARK 
+                        ? 'border-white/20 text-gray-300 hover:border-orange-500/50 hover:text-orange-500' 
+                        : 'border-black/20 text-gray-700 hover:border-orange-500/50 hover:text-orange-500'
+                    } mobile-optimized`}
+                  >
+                    {reply}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
-          
-          {/* Main Chat Area - Takes remaining space */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {isFullscreenInternal && !isPanelVoiceActive && expandedMessageContent && (
-                <div className="flex-grow flex overflow-hidden">
-                  <div className={`w-2/3 flex-shrink-0 border-r ${theme === Theme.DARK ? 'border-[var(--border-dark)]' : 'border-[var(--border-light)]'}`}>
-                    <ExpandedMessageDisplay
-                      message={expandedMessageContent}
-                      theme={theme}
-                      onClose={handleCollapseMessageContent}
-                    />
-                  </div>
-                  <div className="w-1/3 flex flex-col overflow-hidden">
-                    <ChatMessagesArea
-                      messages={chatHistory}
-                      theme={theme}
-                      isAiThinking={isAiThinking}
-                      isPanelFullscreen={isFullscreenInternal}
-                      onExpandRequest={handleExpandMessageContent}
-                      onSendMessage={(message) => onSendMessage(message)}
-                      isPanelVoiceActive={isPanelVoiceActive}
-                      onFormSubmit={onFormSubmit}
-                    />
-                    <InteractionInputBar
-                      theme={theme}
-                      onSendMessage={(message, attachments) => onSendMessage(message)}
-                      onVoiceModeToggle={isPanelVoiceActive ? handleDeactivatePanelVoiceMode : handleActivatePanelVoiceMode}
-                      isVoiceMode={isPanelVoiceActive}
-                      isListening={false}
-                      interimTranscript={gdmAudioRef.current?.lastUserInterimTranscript || ''}
-                      isFullscreen={isFullscreenInternal}
-                      disabled={isAiThinking}
-                    />
-                  </div>
-                </div>
-            )}
 
-            { (!isFullscreenInternal || (isFullscreenInternal && !expandedMessageContent) || isPanelVoiceActive ) && (
-              <>
-                <ChatMessagesArea
-                    messages={chatHistory}
-                    theme={theme}
-                    isAiThinking={isAiThinking}
-                    isPanelFullscreen={isFullscreenInternal}
-                    onExpandRequest={handleExpandMessageContent}
-                    onSendMessage={(message) => onSendMessage(message)}
-                    isPanelVoiceActive={isPanelVoiceActive}
-                    onFormSubmit={onFormSubmit}
-                />
+          {/* Enhanced Input Bar */}
+          <div className={`border-t ${
+            theme === Theme.DARK ? 'border-white/10' : 'border-black/10'
+          }`}>
+            <InteractionInputBar
+              theme={theme}
+              onSendMessage={handleInputBarSendMessage}
+              isFullscreen={isFullscreen}
+              placeholder="Ask about AI consulting, services, or anything else..."
+            />
+          </div>
 
-                <div className="flex-shrink-0">
-                  {showQuickReplies && (
-                      <div className={`p-2 sm:p-3 border-t ${theme === Theme.DARK ? 'border-[var(--border-dark)]/70' : 'border-[var(--border-light)]/70'} flex-shrink-0`}>
-                          <div className="flex flex-wrap justify-center items-center gap-1.5 sm:gap-2">
-                              {quickReplies.map((reply) => (
-                              <button
-                                  key={reply.text}
-                                  onClick={() => handleQuickReply(reply.prompt)}
-                                  className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium border transition-colors flex items-center justify-center
-                                      ${theme === Theme.DARK
-                                          ? 'border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-gray-500'
-                                          : 'border-gray-400 text-gray-700 hover:bg-gray-100 hover:border-gray-500'}`}
-                              >
-                              {reply.icon && <reply.icon size={14} className="inline mr-1.5 opacity-80" style={{ color: 'var(--accent-color)' }} />} {reply.text}
-                              </button>
-                              ))}
-                          </div>
-                      </div>
-                  )}
-
-
-
-                  <InteractionInputBar
-                      theme={theme}
-                      onSendMessage={(message, attachments) => onSendMessage(message)}
-                      onVoiceModeToggle={isPanelVoiceActive ? handleDeactivatePanelVoiceMode : handleActivatePanelVoiceMode}
-                      isVoiceMode={isPanelVoiceActive}
-                      isListening={false}
-                      interimTranscript={gdmAudioRef.current?.lastUserInterimTranscript || ''}
-                      isFullscreen={isFullscreenInternal}
-                      disabled={isAiThinking}
-                  />
-                </div>
-              </>
-            )}
-          </div> 
-        </div> 
+          {/* Enhanced Footer */}
+          <div className={`px-4 py-2 border-t ${
+            theme === Theme.DARK ? 'border-white/10 bg-black/20' : 'border-black/10 bg-white/20'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleClearChatAndSession}
+                  className={`text-xs px-3 py-1 rounded transition-colors ${
+                    theme === Theme.DARK 
+                      ? 'text-gray-400 hover:text-white hover:bg-white/10' 
+                      : 'text-gray-600 hover:text-black hover:bg-black/10'
+                  } mobile-optimized`}
+                >
+                  Clear Chat
+                </button>
+              </div>
+              
+              <div className={`text-xs ${
+                theme === Theme.DARK ? 'text-gray-500' : 'text-gray-500'
+              }`}>
+                Powered by AI
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <gdm-live-audio
-          ref={gdmAudioRef}
-          theme={theme.toString()}
-          style={{ display: 'none' }}
-      />
-      
-      <FullScreenVoiceOverlay
-        isActive={isPanelVoiceActive}
-        onClose={handleDeactivatePanelVoiceMode}
+
+      {/* Side Panel */}
+      <ChatSidePanel
+        isOpen={isSidePanelOpen}
         theme={theme}
-        gdmAudioRef={gdmAudioRef as React.RefObject<GdmLiveAudio>}
+        onClose={() => setIsSidePanelOpen(false)}
+        chatHistory={chatHistory}
+        onDownloadTranscript={handleDownloadTranscript}
+        summaryData={summaryData}
+        isLoading={isLoadingSummary}
       />
-    </div>
+
+      {/* Expanded Message Display */}
+      {expandedMessageContent && (
+        <ExpandedMessageDisplay
+          message={expandedMessageContent}
+          theme={theme}
+          onClose={handleCollapseMessageContent}
+        />
+      )}
+    </>
   );
 };

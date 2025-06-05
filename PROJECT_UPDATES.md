@@ -1069,6 +1069,23 @@ Frontend (React) → Serverless Proxy (api/gemini-proxy.ts) → Google Gemini AP
   - Refocused all development and polish on chat, image, web search, and other Gemini features that work via the secure serverless proxy.
   - Voice features will be revisited in the future if/when a supported backend or persistent WebSocket environment is available.
 
+### Vercel Deployment & Serverless Proxy Details
+- **Serverless Proxy Setup:**
+  - Created `api/gemini-proxy.ts` as a Vercel serverless function to securely handle all Gemini API calls (text, image, search, etc.).
+  - Implemented rate limiting, cost tracking, and robust error handling in the proxy.
+- **Environment Variables:**
+  - Set `GEMINI_API_KEY_SERVER` in Vercel project settings (never exposed to the client).
+- **Vercel Configuration:**
+  - Added `vercel.json` with rewrites for clean API routing and CORS headers for browser compatibility.
+- **Endpoint Testing:**
+  - Verified all endpoints (`/api/gemini-proxy/generate`, `/analyze-image`, `/health`, etc.) work in production.
+  - Confirmed that unsupported endpoints (live audio, TTS) return clear, actionable errors.
+- **API Key Security:**
+  - Confirmed no API keys are exposed in client-side code or network requests (checked via browser dev tools).
+- **Production Deployment:**
+  - Deployed to Vercel, validated all chat/image/search features work via the proxy.
+  - Ensured fallback to browser STT/TTS for voice, with clear UI messaging.
+
 ### Technical Details
 - All live audio UI and logic is now commented out or replaced with stubs.
 - No client-side API key exposure for any Gemini features.

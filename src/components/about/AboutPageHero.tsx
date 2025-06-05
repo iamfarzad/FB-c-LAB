@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Theme } from '../../../types';
-import { FlickeringGrid } from '../ui/FlickeringGrid';
 import { ArrowDown } from 'lucide-react';
 
 interface AboutPageHeroProps {
@@ -16,33 +15,8 @@ export const AboutPageHero: React.FC<AboutPageHeroProps> = ({ theme }) => {
 
   return (
     <section 
-      className={`relative min-h-screen flex items-center justify-center text-center transition-all duration-700 overflow-hidden
-        ${theme === Theme.DARK ? 'bg-black' : 'bg-white'}`}
+      className="relative min-h-screen flex items-center justify-center text-center transition-all duration-700 overflow-hidden"
     >
-      {/* Sophisticated background */}
-      <div className="absolute inset-0">
-        <FlickeringGrid
-          className="absolute inset-0 z-0"
-          squareSize={2}
-          gridGap={16}
-          maxOpacity={0.06}
-          flickerChance={0.008}
-          width={1920}
-          height={1080}
-          theme={theme === Theme.DARK ? 'dark' : 'light'}
-          blur={1.5}
-        />
-        
-        <div 
-          className="absolute inset-0 z-10"
-          style={{
-            background: theme === Theme.DARK 
-              ? 'radial-gradient(circle at center, transparent 20%, rgba(0,0,0,0.9) 80%)' 
-              : 'radial-gradient(circle at center, transparent 20%, rgba(255,255,255,0.9) 80%)'
-          }}
-        />
-      </div>
-
       <div className="container mx-auto px-6 relative z-20">
         <div className="max-w-4xl mx-auto">
           {/* Clean, professional typography */}

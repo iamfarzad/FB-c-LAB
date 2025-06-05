@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Theme } from '../../../types';
-import { FlickeringGrid } from '../ui/FlickeringGrid';
+// Background pattern is now handled by Layout component
 import { TrendingUp, Clock, BarChart2 } from 'lucide-react';
 
 interface ResultsRealProjectsSectionProps {
@@ -87,20 +87,7 @@ export const ResultsRealProjectsSection: React.FC<ResultsRealProjectsSectionProp
       className={`relative py-24 lg:py-32 transition-all duration-700 overflow-hidden
         ${theme === Theme.DARK ? 'bg-black' : 'bg-white'}`}
     >
-      {/* Subtle background effects */}
-      <div className="absolute inset-0">
-        <FlickeringGrid
-          className="absolute inset-0 z-0"
-          squareSize={2}
-          gridGap={18}
-          maxOpacity={0.04}
-          flickerChance={0.006}
-          width={1920}
-          height={1080}
-          theme={theme === Theme.DARK ? 'dark' : 'light'}
-          blur={2}
-        />
-      </div>
+      {/* Background pattern is handled by Layout component */}
 
       <div className="container mx-auto px-6 relative z-10">
         {/* Clean section header */}

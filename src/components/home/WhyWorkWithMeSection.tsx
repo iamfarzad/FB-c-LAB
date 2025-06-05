@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Theme } from '../../../types';
-import { FlickeringGrid } from '../ui/FlickeringGrid';
+// Background pattern is now handled by Layout component
 import { ArrowRight, CheckCircle } from 'lucide-react';
 
 interface WhyWorkWithMeSectionProps {
@@ -52,20 +52,7 @@ export const WhyWorkWithMeSection: React.FC<WhyWorkWithMeSectionProps> = ({ them
       className={`relative py-24 lg:py-32 transition-all duration-700 overflow-hidden
         ${theme === Theme.DARK ? 'bg-black' : 'bg-white'}`}
     >
-      {/* Subtle background effect */}
-      <div className="absolute inset-0">
-        <FlickeringGrid
-          className="absolute inset-0 z-0"
-          squareSize={2}
-          gridGap={18}
-          maxOpacity={0.04}
-          flickerChance={0.006}
-          width={1920}
-          height={1080}
-          theme={theme === Theme.DARK ? 'dark' : 'light'}
-          blur={2}
-        />
-      </div>
+      {/* Background pattern is handled by Layout component */}
 
       <div className="container mx-auto px-6 relative z-10">
         {/* Clean section header */}

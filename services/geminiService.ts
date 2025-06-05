@@ -396,46 +396,8 @@ export const streamAudio = async (
   onTranscript: (transcript: string, isFinal: boolean) => void,
   onError: (error: string) => void
 ): Promise<void> => {
-  try {
-    console.log('[GeminiService] Attempting Gemini Live Audio streaming...');
-    
-    // Convert audio chunks to WAV format for Gemini
-    const audioBlob = await convertAudioChunksToWav(audioChunks);
-    const base64Audio = await blobToBase64(audioBlob);
-    
-    // Use direct API call if available, otherwise proxy
-    const endpoint = '/stream-audio';
-    const data = {
-      audioData: base64Audio,
-      model: 'gemini-2.0-flash-live-001', // Gemini Live Audio model
-      mimeType: 'audio/wav',
-      sampleRate: 16000
-    };
-    
-    let response: ProxyResponse;
-    
-    if (isDevelopment && hasDirectApiKey && forceDirectApi) {
-      response = await makeDirectApiCall('stream-audio', data);
-    } else {
-      response = await makeProxyRequest(endpoint, data);
-    }
-    
-    if (!response.success) {
-      // Expected error - Live Audio requires WebSocket, not REST API
-      console.log('[GeminiService] Live Audio not available via REST API, using browser speech recognition');
-      onError('Live Audio requires WebSocket connection. Using browser speech recognition instead.');
-      return;
-    }
-    
-    // Handle streaming response (if somehow successful)
-    if (response.data?.transcript) {
-      onTranscript(response.data.transcript, response.data.isFinal || false);
-    }
-    
-  } catch (error) {
-    console.log('[GeminiService] Expected error - Live Audio requires WebSocket:', error);
-    onError('Live Audio requires WebSocket connection. Using browser speech recognition instead.');
-  }
+  // LIVE AUDIO FUNCTIONALITY PARKED FOR NOW
+  onError('Live audio is currently disabled (feature parked for now).');
 };
 
 // Convert audio chunks to WAV blob

@@ -1,7 +1,8 @@
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { useTheme, Theme } from '../contexts/ThemeContext';
 import { GeometricAccent } from './ui/GeometricAccent';
 import Head from 'next/head';
+import { BackgroundPattern } from './layout/BackgroundPattern';
 
 interface LayoutProps {
   children: ReactNode;
@@ -25,8 +26,13 @@ export default function Layout({
       <Head>
         <title>{title}</title>
         <meta name="description" content={description} />
-        <meta name="theme-color" content={theme === Theme.DARK ? '#000000' : '#ffffff'} />
+        <meta name="theme-color" content={theme === Theme.DARK ? '#0a0a0a' : '#f8fafc'} />
       </Head>
+      
+      {/* Background Pattern */}
+      <div className="fixed inset-0 -z-10">
+        <BackgroundPattern />
+      </div>
 
       {/* Responsive background accents */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
@@ -35,7 +41,7 @@ export default function Layout({
             theme={theme} 
             position="top-right" 
             size={500}
-            opacity={0.12}
+            opacity={0.1}
           />
         </div>
         
@@ -44,7 +50,7 @@ export default function Layout({
             theme={theme} 
             position="bottom-left" 
             size={400}
-            opacity={0.08}
+            opacity={0.06}
           />
         </div>
       </div>

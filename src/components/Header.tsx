@@ -186,8 +186,8 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
 
   // Mobile menu styling with enhanced effects
   const mobileMenuBg = theme === Theme.DARK 
-    ? 'bg-black/95 backdrop-blur-xl border-gray-800/50' 
-    : 'bg-white/95 backdrop-blur-xl border-gray-200/50';
+    ? 'bg-black/95 backdrop-blur-xl border border-gray-800/50' 
+    : 'bg-white/95 backdrop-blur-xl border border-gray-200/50';
 
   // Handle scroll effects
   useEffect(() => {
@@ -241,25 +241,37 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
         ${headerBg} ${headerText} ${isScrolled ? 'py-2' : 'py-4'}`}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
-            {/* Enhanced tech-focused brand logo */}
+            {/* Brand Logo */}
             <Link to="/" className="flex-shrink-0" onClick={closeMobileMenu}>
               <TechFBCLogo theme={theme} />
             </Link>
 
-            {/* Desktop navigation - NOW VISIBLE ON MOST SCREENS */}
-            <nav className="flex flex-grow justify-center items-center space-x-1 lg:space-x-2 max-w-2xl mx-4">
+            {/* ADD THIS DESKTOP NAVIGATION SECTION */}
+            <nav className="hidden md:flex flex-grow justify-center items-center space-x-1 lg:space-x-2 max-w-2xl mx-4">
               {navLinks.map(link => (
-                <EnhancedNavLink
+                <Link
                   key={link.text}
                   to={link.to}
-                  text={link.text}
-                  theme={theme}
-                  isActive={location.pathname === link.to}
-                />
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 relative
+                    ${location.pathname === link.to
+                      ? (theme === Theme.DARK 
+                        ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-lg shadow-orange-500/10' 
+                        : 'bg-orange-500/10 text-orange-600 border border-orange-500/20 shadow-lg shadow-orange-500/10')
+                      : (theme === Theme.DARK 
+                        ? 'text-gray-300 hover:bg-gray-800/60 border border-transparent hover:border-gray-700/50' 
+                        : 'text-gray-700 hover:bg-gray-100/60 border border-transparent hover:border-gray-200/50')
+                    }`}
+                  onClick={closeMobileMenu}
+                >
+                  {link.text}
+                  {location.pathname === link.to && (
+                    <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-orange-500 rounded-full" />
+                  )}
+                </Link>
               ))}
             </nav>
 
-            {/* Enhanced action buttons */}
+            {/* Action Buttons (Search, Chat, Theme, Mobile Menu) */}
             <div className="flex items-center space-x-2">
               {/* Search button - hidden on small screens */}
               <button
@@ -322,21 +334,16 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
                 </div>
               </button>
 
-              {/* Enhanced mobile menu button - only shows on very small screens */}
-              <button
+              {/* Mobile menu button - ONLY on mobile */}
+              <button 
                 onClick={toggleMobileMenu}
-                className={`hidden relative p-3 rounded-xl transition-all duration-300 backdrop-blur-sm
-                  group hover:scale-110 active:scale-95 border
-                  ${theme === Theme.DARK 
-                    ? (isMobileMenuOpen 
-                      ? 'bg-gray-800 text-orange-400 border-orange-500/50' 
-                      : 'text-gray-300 hover:bg-gray-800/60 border-gray-700/50')
-                    : (isMobileMenuOpen 
-                      ? 'bg-gray-100 text-orange-600 border-orange-500/50' 
-                      : 'text-gray-700 hover:bg-gray-100/60 border-gray-200/50')
-                  }`}
-                title="Toggle Mobile Menu"
-                aria-label="Toggle Mobile Menu"
+                className={`md:hidden relative p-3 rounded-xl transition-all duration-300 backdrop-blur-sm
+                group hover:scale-110 active:scale-95 border
+                ${theme === Theme.DARK 
+                  ? 'text-gray-300 hover:bg-gray-800/60 border-gray-700/50' 
+                  : 'text-gray-700 hover:bg-gray-100/60 border-gray-200/50'
+                } focus:outline-none focus:ring-2 focus:ring-orange-500/20`} 
+                aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
                 aria-expanded={isMobileMenuOpen}
               >
                 <div className="transition-transform duration-300">
@@ -379,10 +386,10 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
           className="h-0.5 relative overflow-hidden"
           style={{ backgroundColor: accentColor }}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-orange-300 to-transparent 
-            opacity-50 animate-pulse" />
-          <div className="absolute inset-0 bg-gradient-to-r from-orange-500 via-transparent to-orange-500 
-            opacity-30 animate-gradient-shift" 
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-orange-300 to-transparent opacity-50 animate-pulse" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-orange-500/30 to-transparent" />
+          <div 
+            className="absolute inset-0 bg-gradient-to-r from-orange-500 via-transparent to-orange-500"
             style={{ 
               backgroundSize: '200% 100%',
               animation: 'gradient-shift 3s ease infinite'
@@ -391,59 +398,52 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
         </div>
       </header>
 
-      {/* Enhanced Mobile Menu with animations - hidden since nav is now always visible */}
-      <div 
+      {/* Fixed Mobile Menu - Replace your entire mobile menu section with this */}
+      <div
         ref={mobileMenuRef}
-        className={`hidden fixed top-[${isScrolled ? '57px' : '73px'}] left-0 right-0 z-50 transform transition-all duration-300 ease-in-out border-b
-          ${isMobileMenuOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}
-          ${mobileMenuBg}`}
+        className="fixed top-0 right-0 h-full w-80 bg-white dark:bg-gray-900 shadow-xl"
+        style={{
+          transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.3s ease-in-out'
+        }}
       >
-        <nav className="container mx-auto px-4 py-6">
-          <div className="flex flex-col space-y-4">
-            {navLinks.map((link, index) => (
-              <EnhancedNavLink
+        <div className="flex flex-col h-full">
+          <div className="flex items-center justify-between p-4 border-b">
+            <TechFBCLogo theme={theme} />
+            <button onClick={closeMobileMenu} className="p-2">
+              <X size={20} />
+            </button>
+          </div>
+
+          <nav className="p-4">
+            {navLinks.map(link => (
+              <Link
                 key={link.text}
                 to={link.to}
-                text={link.text}
-                theme={theme}
-                isActive={location.pathname === link.to}
                 onClick={closeMobileMenu}
-              />
+                className="block py-2"
+              >
+                {link.text}
+              </Link>
             ))}
-          </div>
-        </nav>
+          </nav>
+        </div>
       </div>
 
-      {/* Enhanced mobile menu backdrop with blur */}
+      {/* Fixed mobile menu backdrop */}
       {isMobileMenuOpen && (
         <div 
-          className="hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-40 transition-opacity duration-300"
+          className="fixed inset-0 bg-black/50"
           onClick={closeMobileMenu}
         />
       )}
 
       {/* Add enhanced keyframes */}
       <style>{`
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-        
         @keyframes gradient-shift {
           0% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }
           100% { background-position: 0% 50%; }
-        }
-        
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0; }
-        }
-        
-        @keyframes pulse {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.1); }
-          100% { transform: scale(1); }
         }
       `}</style>
     </>

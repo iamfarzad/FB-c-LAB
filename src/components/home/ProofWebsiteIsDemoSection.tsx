@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Theme } from '../../../types';
-import { FlickeringGrid } from '../ui/FlickeringGrid';
+// Background pattern is now handled by Layout component
 import { Code, Server, Database, ArrowRight } from 'lucide-react';
 
 interface ProofWebsiteIsDemoSectionProps {
@@ -51,21 +51,7 @@ export const ProofWebsiteIsDemoSection: React.FC<ProofWebsiteIsDemoSectionProps>
       className={`relative py-24 lg:py-32 transition-all duration-700 overflow-hidden
         ${theme === Theme.DARK ? 'bg-black' : 'bg-white'}`}
     >
-      {/* Subtle background effect */}
-      <div className="absolute inset-0">
-        <FlickeringGrid
-          className="absolute inset-0 z-0"
-          squareSize={2}
-          gridGap={16}
-          maxOpacity={0.05}
-          flickerChance={0.007}
-          width={1920}
-          height={1080}
-          theme={theme === Theme.DARK ? 'dark' : 'light'}
-          blur={1.5}
-        />
-      </div>
-
+      {/* Background pattern is handled by Layout component */}
       <div className="container mx-auto px-6 relative z-10">
         <div className="max-w-4xl mx-auto">
           {/* Clean section header */}

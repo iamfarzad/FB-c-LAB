@@ -1,7 +1,8 @@
-
 import React from 'react';
 import { Theme } from '../types';
-import { Mail, Calendar, MessageSquare } from 'lucide-react';
+import { Container } from '../src/components/Container';
+import { MessageSquare, Mail, Calendar, MapPin, Phone } from 'lucide-react';
+import { GridPattern } from '../src/components/magicui/grid-pattern';
 import { CALENDLY_PLACEHOLDER_URL, FBC_BRAND_NAME } from '../constants';
 
 interface ContactPageProps {
@@ -10,71 +11,129 @@ interface ContactPageProps {
 }
 
 export const ContactPage: React.FC<ContactPageProps> = ({ theme, onToggleChat }) => {
-  const accentColor = 'var(--accent-color)'; // Orange
-  const accentColorHover = 'var(--accent-color-hover)';
-  const buttonTextColor = 'text-white'; // Assuming white text for orange buttons
+  const contactMethods = [
+    {
+      icon: MessageSquare,
+      title: "AI Assistant Chat",
+      description: "Get instant answers about AI consulting and services",
+      action: "Start Chat",
+      onClick: () => onToggleChat("I'd like to discuss AI consulting services")
+    },
+    {
+      icon: Mail,
+      title: "Email",
+      description: "Send detailed inquiries and project requirements",
+      action: "hello@farzadai.com",
+      onClick: () => window.open('mailto:hello@farzadai.com')
+    },
+    {
+      icon: Calendar,
+      title: "Book a Call",
+      description: "Schedule a free 15-minute strategy session",
+      action: "Schedule Now",
+      onClick: () => window.open('https://calendly.com/farzadai', '_blank')
+    },
+    {
+      icon: MapPin,
+      title: "Location",
+      description: "Remote consultations worldwide, based in Norway",
+      action: "Oslo, Norway",
+      onClick: () => {}
+    }
+  ];
 
   return (
-    <div className={`py-12 md:py-20 transition-colors duration-300 ${theme === Theme.DARK ? 'bg-black text-white' : 'bg-gray-50 text-gray-900'}`}>
-      <div className="container mx-auto px-6">
-        <header className="text-center mb-12 md:mb-16">
-          <Mail size={64} className="mx-auto mb-6" style={{ color: accentColor }} />
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Get in Touch</h1>
-          <p className={`text-lg md:text-xl max-w-2xl mx-auto ${theme === Theme.DARK ? 'text-gray-300' : 'text-gray-600'}`}>
-            Ready to explore how AI can transform your business? Let's connect.
-          </p>
-        </header>
+    <div className={`min-h-screen relative transition-colors duration-300 ${
+      theme === Theme.DARK ? 'bg-black text-white' : 'bg-white text-black'
+    }`}>
+      {/* Grid Pattern Background */}
+      <GridPattern
+        className="absolute inset-0 opacity-30"
+        theme={theme === Theme.DARK ? 'dark' : 'light'}
+        width={60}
+        height={60}
+        strokeDasharray="0"
+      />
+      
+      {/* Content */}
+      <div className="relative z-10">
+        <Container className="py-24">
+          <div className="max-w-4xl mx-auto">
+            {/* Header */}
+            <div className="text-center mb-16">
+              <h1 className={`text-4xl md:text-6xl font-light mb-6 ${
+                theme === Theme.DARK ? 'text-white' : 'text-black'
+              }`}>
+                Let's Build Something
+                <span className="block text-gradient font-medium">Amazing Together</span>
+              </h1>
+              <p className={`text-xl max-w-2xl mx-auto ${
+                theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                Ready to transform your business with AI? Choose the best way to connect and let's start the conversation.
+              </p>
+            </div>
 
-        <div className="max-w-3xl mx-auto grid md:grid-cols-2 gap-8 md:gap-12">
-          <div className={`p-6 md:p-8 rounded-xl shadow-xl text-center ${theme === Theme.DARK ? 'bg-gray-900' : 'bg-white'}`}>
-            <Calendar size={48} className="mx-auto mb-5" style={{ color: accentColor }} />
-            <h2 className="text-2xl font-semibold mb-3">Book a Free Consultation</h2>
-            <p className={`mb-6 text-md ${theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600'}`}>
-              Schedule a complimentary 15-minute strategy session to discuss your needs and how ${FBC_BRAND_NAME} can help.
-            </p>
-            <a
-              href={CALENDLY_PLACEHOLDER_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`inline-block font-bold py-3 px-8 rounded-lg text-lg transition-transform duration-300 ease-in-out hover:scale-105 shadow-lg ${buttonTextColor}`}
-              style={{ backgroundColor: accentColor }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = `var(--accent-color-hover)`}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = accentColor}
-            >
-              Schedule Now
-            </a>
+            {/* Contact Methods Grid */}
+            <div className="grid md:grid-cols-2 gap-8 mb-16">
+              {contactMethods.map((method, index) => (
+                <div
+                  key={method.title}
+                  onClick={method.onClick}
+                  className={`card-enhanced p-8 cursor-pointer hover-lift group ${
+                    theme === Theme.DARK 
+                      ? 'bg-black/40 border-white/10 hover:border-orange-500/30' 
+                      : 'bg-white/40 border-black/10 hover:border-orange-500/30'
+                  }`}
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <div className="flex items-start space-x-4">
+                    <div className={`p-3 rounded-lg ${
+                      theme === Theme.DARK ? 'bg-orange-500/10' : 'bg-orange-500/10'
+                    }`}>
+                      <method.icon size={24} className="text-orange-500" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`text-xl font-medium mb-2 ${
+                        theme === Theme.DARK ? 'text-white' : 'text-black'
+                      }`}>
+                        {method.title}
+                      </h3>
+                      <p className={`text-sm mb-4 ${
+                        theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600'
+                      }`}>
+                        {method.description}
+                      </p>
+                      <span className={`text-orange-500 font-medium group-hover:underline ${
+                        method.title === "Location" ? 'cursor-default' : 'cursor-pointer'
+                      }`}>
+                        {method.action}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Quick Response Promise */}
+            <div className={`text-center p-8 rounded-lg border ${
+              theme === Theme.DARK 
+                ? 'bg-black/20 border-white/10' 
+                : 'bg-white/20 border-black/10'
+            }`}>
+              <h3 className={`text-lg font-medium mb-2 ${
+                theme === Theme.DARK ? 'text-white' : 'text-black'
+              }`}>
+                Quick Response Guarantee
+              </h3>
+              <p className={`${
+                theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                I respond to all inquiries within 24 hours. For urgent matters, use the AI chat for immediate assistance.
+              </p>
+            </div>
           </div>
-
-          <div className={`p-6 md:p-8 rounded-xl shadow-xl text-center ${theme === Theme.DARK ? 'bg-gray-900' : 'bg-white'}`}>
-            <MessageSquare size={48} className="mx-auto mb-5" style={{ color: accentColor }} />
-            <h2 className="text-2xl font-semibold mb-3">Ask My AI Assistant</h2>
-            <p className={`mb-6 text-md ${theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600'}`}>
-              Have a quick question? My AI assistant is available 24/7 to provide information about services, workshops, or general AI queries.
-            </p>
-            <button
-              onClick={() => onToggleChat()}
-              className={`inline-block font-bold py-3 px-8 rounded-lg text-lg transition-transform duration-300 ease-in-out hover:scale-105 shadow-lg ${buttonTextColor}`}
-              style={{ backgroundColor: accentColor }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = `var(--accent-color-hover)`}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = accentColor}
-            >
-              Start AI Chat
-            </button>
-          </div>
-        </div>
-        
-        <div className={`mt-12 md:mt-16 p-6 md:p-8 rounded-xl shadow-xl text-center max-w-3xl mx-auto ${theme === Theme.DARK ? 'bg-gray-900' : 'bg-white'}`}>
-            <h2 className="text-2xl font-semibold mb-3">General Inquiries</h2>
-             <p className={`mb-4 text-md ${theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600'}`}>
-              For other questions, or if you prefer email, you can reach out directly. 
-              (Please note: for fastest response on consultation booking, use the scheduling link.)
-            </p>
-            <p className={`text-lg font-medium`} style={{color: accentColor}}>
-                Email: <a href="mailto:placeholder@fbc.com" className="hover:underline">placeholder@fbc.com</a> (Replace with actual email)
-            </p>
-        </div>
-
-
+        </Container>
       </div>
     </div>
   );
