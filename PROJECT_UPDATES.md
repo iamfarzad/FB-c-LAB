@@ -1053,3 +1053,28 @@ Frontend (React) → Serverless Proxy (api/gemini-proxy.ts) → Google Gemini AP
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
+
+## Update: 2025-06-05 - **LIVE AUDIO PARKED: Gemini Live Audio (WebSocket) Not Supported on Vercel**
+
+### What's Been Done
+- **Extensive Troubleshooting (9+ hours):**
+  - Investigated, debugged, and attempted to enable Gemini Live Audio (WebSocket) features on Vercel serverless deployment.
+  - Explored all possible workarounds, including direct API calls, proxying, and SDK configuration.
+  - Confirmed that Gemini Live Audio (WebSocket streaming) is **not supported** in Vercel serverless functions (REST-only environment).
+- **Decision:**
+  - **Commented out and parked all live audio code** (GdmLiveAudio, wrappers, UI toggles, service logic, etc.) for now.
+  - Updated all related components to display a clear message: "Live audio is currently disabled (feature parked for now)."
+  - Ensured no live audio code is active in production or development builds.
+- **Focus Shift:**
+  - Refocused all development and polish on chat, image, web search, and other Gemini features that work via the secure serverless proxy.
+  - Voice features will be revisited in the future if/when a supported backend or persistent WebSocket environment is available.
+
+### Technical Details
+- All live audio UI and logic is now commented out or replaced with stubs.
+- No client-side API key exposure for any Gemini features.
+- Chat, image, and all other Gemini features remain fully available and secure via the proxy.
+
+### Next Steps
+1. Continue polishing chat, image, and web search features.
+2. Monitor Gemini API updates for possible future support of live audio in serverless or edge environments.
+3. Document this limitation and decision in all relevant project docs.
