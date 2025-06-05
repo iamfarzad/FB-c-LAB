@@ -305,64 +305,29 @@ export class GdmLiveAudio extends LitElement {
   private async processUserSpeech(text: string) {
     this.updateStatus('Processing user speech...');
     try {
-      // Use the same proxy endpoint as the main app
-      const response = await fetch('/api/gemini-proxy/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: text,
-          model: this.modelName,
-          systemInstruction: this.systemInstruction,
-        }),
-      });
-
-      if (!response.ok) {
-        // If proxy fails, try development fallback
-        if (import.meta.env.DEV && import.meta.env.VITE_API_KEY) {
-          console.log('[GdmLiveAudio] Proxy failed, trying development fallback');
-          const { generateText } = await import('../../../services/geminiService');
-          const aiText = await generateText(text, this.systemInstruction);
-          
-          console.log('[GdmLiveAudio] AI Text Response from Development Fallback:', aiText);
-          this.dispatchEvent(new CustomEvent('ai-speech-text', { detail: { text: aiText } }));
-          this.speakAiResponse(aiText);
-          return;
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
+      // Use the geminiService which handles development fallback automatically
+      const { generateText } = await import('../../../services/geminiService');
       
-      if (result.success && result.data?.text) {
-        console.log('[GdmLiveAudio] AI Text Response from Proxy:', result.data.text);
-        this.dispatchEvent(new CustomEvent('ai-speech-text', { detail: { text: result.data.text } }));
-        this.speakAiResponse(result.data.text);
+      console.log('[GdmLiveAudio] Calling generateText with:', text);
+      const response = await generateText(text, this.systemInstruction);
+      console.log('[GdmLiveAudio] Got response:', response);
+      
+      if (response) {
+        this.updateStatus('Speaking response...');
+        this.speakAiResponse(response);
+        
+        // Dispatch AI speech event
+        this.dispatchEvent(new CustomEvent('ai-speech-text', {
+          detail: { text: response },
+          bubbles: true
+        }));
       } else {
-        console.warn('[GdmLiveAudio] No text response from AI via proxy.');
-        this.updateError('No response from AI');
+        throw new Error('Empty response from AI');
       }
     } catch (error) {
-      console.error('[GdmLiveAudio] Error processing user speech:', error);
-      
-      // Try development fallback as last resort
-      if (import.meta.env.DEV && import.meta.env.VITE_API_KEY) {
-        try {
-          console.log('[GdmLiveAudio] Trying development fallback after error');
-          const { generateText } = await import('../../../services/geminiService');
-          const aiText = await generateText(text, this.systemInstruction);
-          
-          console.log('[GdmLiveAudio] AI Text Response from Development Fallback:', aiText);
-          this.dispatchEvent(new CustomEvent('ai-speech-text', { detail: { text: aiText } }));
-          this.speakAiResponse(aiText);
-          return;
-        } catch (fallbackError) {
-          console.error('[GdmLiveAudio] Development fallback also failed:', fallbackError);
-        }
-      }
-      
-      this.updateError(`AI response error: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('[GdmLiveAudio] Error processing speech:', error);
+      this.updateError(`Failed to process speech: ${error instanceof Error ? error.message : String(error)}`);
+      this.updateStatus('Ready');
     }
   }
 
