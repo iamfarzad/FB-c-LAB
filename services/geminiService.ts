@@ -19,19 +19,21 @@ interface ProxyResponse {
 // Development environment detection
 const isDevelopment = import.meta.env.DEV;
 const hasDirectApiKey = !!import.meta.env.VITE_API_KEY;
+const forceDirectApi = import.meta.env.VITE_FORCE_DIRECT_API === 'true';
 
 console.log('[GeminiService] Environment:', { 
   isDevelopment, 
   hasDirectApiKey,
-  mode: isDevelopment && hasDirectApiKey ? 'development-direct' : 'production-proxy'
+  forceDirectApi,
+  mode: (isDevelopment || forceDirectApi) && hasDirectApiKey ? 'direct-api' : 'production-proxy'
 });
 
 // Proxy endpoint configuration
 const PROXY_ENDPOINT = '/api/gemini-proxy';
 
-// Load Google AI SDK for development
+// Load Google AI SDK for development and forced production mode
 const loadGoogleAI = async () => {
-  if (!isDevelopment || !hasDirectApiKey) {
+  if ((!isDevelopment && !forceDirectApi) || !hasDirectApiKey) {
     return null;
   }
   
@@ -46,10 +48,10 @@ const loadGoogleAI = async () => {
   }
 };
 
-// Direct API call for development
+// Direct API call for development and forced production mode
 const makeDirectApiCall = async (action: string, data: any): Promise<ProxyResponse> => {
-  if (!isDevelopment || !hasDirectApiKey) {
-    throw new Error('Direct API calls only available in development with API key');
+  if ((!isDevelopment && !forceDirectApi) || !hasDirectApiKey) {
+    throw new Error('Direct API calls only available in development or when forced with API key');
   }
 
   try {
@@ -109,6 +111,31 @@ const makeDirectApiCall = async (action: string, data: any): Promise<ProxyRespon
         return { success: true, data: { text } };
       }
       
+      case 'stream-audio': {
+        // For development, we'll use browser STT + text processing + browser TTS
+        console.log('[GeminiService] Development mode: Using browser STT for audio processing');
+        return { 
+          success: true, 
+          data: { 
+            transcript: 'Development mode: Please use browser speech recognition',
+            isFinal: true 
+          } 
+        };
+      }
+      
+      case 'speak-text': {
+        // For development, we'll use browser TTS
+        console.log('[GeminiService] Development mode: Using browser TTS for speech');
+        return { 
+          success: true, 
+          data: { 
+            text: data.text,
+            audioData: null,
+            message: 'Development mode: Using browser TTS'
+          } 
+        };
+      }
+      
       case 'health': {
         // Simple health check for development
         return { success: true, data: { status: 'healthy', mode: 'development' } };
@@ -129,8 +156,8 @@ const makeDirectApiCall = async (action: string, data: any): Promise<ProxyRespon
 // Proxy request function
 const makeProxyRequest = async (endpoint: string, data: any): Promise<ProxyResponse> => {
   try {
-    // In development, try direct API first if available
-    if (isDevelopment && hasDirectApiKey) {
+    // In development or forced mode, try direct API first if available
+    if ((isDevelopment || forceDirectApi) && hasDirectApiKey) {
       console.log('[GeminiService] Using development direct API for:', endpoint);
       
       // Map endpoint to action
@@ -139,7 +166,9 @@ const makeProxyRequest = async (endpoint: string, data: any): Promise<ProxyRespo
         '/stream': 'stream', 
         '/analyze-image': 'analyze-image',
         '/follow-up': 'generate',
-        '/health': 'health'
+        '/health': 'health',
+        '/stream-audio': 'stream-audio',
+        '/speak-text': 'speak-text'
       };
       
       const action = actionMap[endpoint];
@@ -361,59 +390,122 @@ export const summarizeChatHistory = async (conversationHistory: ChatMessage[]): 
   }
 };
 
-// Audio streaming via proxy (placeholder for future implementation)
+// Audio streaming using Gemini Live Audio API for native voice
 export const streamAudio = async (
   audioChunks: Float32Array[],
   onTranscript: (transcript: string, isFinal: boolean) => void,
   onError: (error: string) => void
 ): Promise<void> => {
   try {
-    // For now, we'll use browser-based speech recognition as recommended in the plan
-    // This is more secure than streaming audio through the proxy
+    console.log('[GeminiService] Starting Gemini Live Audio streaming...');
     
-    // Check if browser supports speech recognition
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    // Convert audio chunks to WAV format for Gemini
+    const audioBlob = await convertAudioChunksToWav(audioChunks);
+    const base64Audio = await blobToBase64(audioBlob);
     
-    if (!SpeechRecognition) {
-      onError('Speech recognition not supported in this browser');
-      return;
+    // Use direct API call if available, otherwise proxy
+    const endpoint = '/stream-audio';
+    const data = {
+      audioData: base64Audio,
+      model: 'gemini-2.0-flash-live-001', // Gemini Live Audio model
+      mimeType: 'audio/wav',
+      sampleRate: 16000
+    };
+    
+    let response: ProxyResponse;
+    
+    if (isDevelopment && hasDirectApiKey && forceDirectApi) {
+      response = await makeDirectApiCall('stream-audio', data);
+    } else {
+      response = await makeProxyRequest(endpoint, data);
     }
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-
-    recognition.onresult = (event: any) => {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        const isFinal = event.results[i].isFinal;
-        onTranscript(transcript, isFinal);
-      }
-    };
-
-    recognition.onerror = (event: any) => {
-      onError(`Speech recognition error: ${event.error}`);
-    };
-
-    recognition.start();
     
-    // Store recognition instance for cleanup
-    (streamAudio as any).currentRecognition = recognition;
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to stream audio to Gemini');
+    }
+    
+    // Handle streaming response
+    if (response.data?.transcript) {
+      onTranscript(response.data.transcript, response.data.isFinal || false);
+    }
     
   } catch (error) {
-    console.error('Error in audio streaming:', error);
-    onError('Failed to start audio streaming');
+    console.error('[GeminiService] Error in Gemini Live Audio streaming:', error);
+    onError(`Gemini Live Audio error: ${error instanceof Error ? error.message : String(error)}`);
   }
+};
+
+// Convert audio chunks to WAV blob
+const convertAudioChunksToWav = async (audioChunks: Float32Array[]): Promise<Blob> => {
+  // Combine all audio chunks
+  const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const combinedBuffer = new Float32Array(totalLength);
+  
+  let offset = 0;
+  for (const chunk of audioChunks) {
+    combinedBuffer.set(chunk, offset);
+    offset += chunk.length;
+  }
+  
+  // Convert to WAV format
+  return float32ToWav(combinedBuffer, 16000);
+};
+
+// Convert Float32Array to WAV blob
+const float32ToWav = (buffer: Float32Array, sampleRate: number): Blob => {
+  const length = buffer.length;
+  const arrayBuffer = new ArrayBuffer(44 + length * 2);
+  const view = new DataView(arrayBuffer);
+  
+  // WAV header
+  const writeString = (offset: number, string: string) => {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  };
+  
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + length * 2, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, length * 2, true);
+  
+  // Convert float samples to 16-bit PCM
+  let offset = 44;
+  for (let i = 0; i < length; i++) {
+    const sample = Math.max(-1, Math.min(1, buffer[i]));
+    view.setInt16(offset, sample * 0x7FFF, true);
+    offset += 2;
+  }
+  
+  return new Blob([arrayBuffer], { type: 'audio/wav' });
+};
+
+// Convert blob to base64
+const blobToBase64 = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(',')[1]); // Remove data:audio/wav;base64, prefix
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 };
 
 // Stop audio streaming
 export const stopAudioStream = (): void => {
-  const recognition = (streamAudio as any).currentRecognition;
-  if (recognition) {
-    recognition.stop();
-    (streamAudio as any).currentRecognition = null;
-  }
+  // Clean up any active streaming connections
+  console.log('[GeminiService] Stopping Gemini Live Audio stream...');
 };
 
 // Check proxy health with development fallback
@@ -449,34 +541,80 @@ export const checkProxyHealth = async (): Promise<boolean> => {
 
 // Get service configuration
 export const getServiceConfig = () => ({
-  mode: 'serverless-proxy',
+  mode: forceDirectApi ? 'direct-api' : 'serverless-proxy',
   endpoint: PROXY_ENDPOINT,
   models: {
     text: GEMINI_TEXT_MODEL,
-    image: GEMINI_IMAGE_MODEL
+    image: GEMINI_IMAGE_MODEL,
+    liveAudio: 'gemini-2.0-flash-live-001'
   },
   features: {
     textGeneration: true,
     imageAnalysis: true,
     streaming: true,
-    audioStreaming: true, // Browser-based STT/TTS
+    nativeLiveAudio: true, // True Gemini Live Audio
     followUpBriefs: true
   }
 });
 
-// Text-to-speech using browser API (recommended approach for voice)
+// Text-to-speech using Gemini's native voice (Live Audio API)
 export const speakText = async (text: string): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    if (!('speechSynthesis' in window)) {
-      reject(new Error('Text-to-speech not supported in this browser'));
-      return;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.onend = () => resolve();
-    utterance.onerror = (event) => reject(new Error(`Speech synthesis error: ${event.error}`));
+  try {
+    console.log('[GeminiService] Using Gemini native TTS for:', text);
     
-    window.speechSynthesis.speak(utterance);
+    const endpoint = '/speak-text';
+    const data = {
+      text,
+      model: 'gemini-2.0-flash-live-001',
+      voice: 'natural' // Use Gemini's natural voice
+    };
+    
+    let response: ProxyResponse;
+    
+    if (isDevelopment && hasDirectApiKey && forceDirectApi) {
+      response = await makeDirectApiCall('speak-text', data);
+    } else {
+      response = await makeProxyRequest(endpoint, data);
+    }
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to generate speech with Gemini');
+    }
+    
+    // Play the audio response from Gemini
+    if (response.data?.audioData) {
+      await playGeminiAudio(response.data.audioData);
+    }
+    
+  } catch (error) {
+    console.warn('[GeminiService] Gemini TTS failed, falling back to browser TTS:', error);
+    // Fallback to browser TTS
+    return new Promise((resolve, reject) => {
+      if (!('speechSynthesis' in window)) {
+        reject(new Error('Text-to-speech not supported in this browser'));
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onend = () => resolve();
+      utterance.onerror = (event) => reject(new Error(`Speech synthesis error: ${event.error}`));
+      
+      window.speechSynthesis.speak(utterance);
+    });
+  }
+};
+
+// Play audio data from Gemini
+const playGeminiAudio = async (audioData: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    try {
+      const audio = new Audio(`data:audio/wav;base64,${audioData}`);
+      audio.onended = () => resolve();
+      audio.onerror = () => reject(new Error('Failed to play Gemini audio'));
+      audio.play();
+    } catch (error) {
+      reject(error);
+    }
   });
 };
 

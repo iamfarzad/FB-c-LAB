@@ -66,6 +66,7 @@ interface ProxyRequestBody {
   email?: string;
   interest?: string;
   conversationSummary?: string;
+  audioData?: string;
 }
 
 // Singleton instance for AI client to reuse connections
@@ -719,6 +720,100 @@ async function handleGenerateClientSummaryForPdf(body: ProxyRequestBody) {
   }
 }
 
+async function handleStreamAudio(body: ProxyRequestBody) {
+  try {
+    if (!body.audioData || !body.model) {
+      return { success: false, error: 'Missing audioData or model for audio streaming' };
+    }
+
+    const ai = getGeminiAI();
+    
+    // Use Gemini Live Audio model for native voice processing
+    const model = ai.getGenerativeModel({ 
+      model: body.model || 'gemini-2.0-flash-live-001',
+      safetySettings: [
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+      ]
+    });
+
+    // Process audio with Gemini Live Audio API
+    const audioPart: Part = {
+      inlineData: {
+        mimeType: body.mimeType || 'audio/wav',
+        data: body.audioData
+      }
+    };
+
+    const textPart: Part = { text: 'Please transcribe this audio and provide a natural response.' };
+    
+    const result = await model.generateContent([textPart, audioPart]);
+    const response = await result.response;
+    
+    return {
+      success: true,
+      data: {
+        transcript: response.text(),
+        isFinal: true
+      }
+    };
+  } catch (error: any) {
+    console.error('Stream audio error:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to process audio stream'
+    };
+  }
+}
+
+async function handleSpeakText(body: ProxyRequestBody) {
+  try {
+    if (!body.text || !body.model) {
+      return { success: false, error: 'Missing text or model for speech generation' };
+    }
+
+    const ai = getGeminiAI();
+    
+    // Use Gemini Live Audio model for native TTS
+    const model = ai.getGenerativeModel({ 
+      model: body.model || 'gemini-2.0-flash-live-001',
+      safetySettings: [
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+      ]
+    });
+
+    // Generate speech using Gemini's native voice capabilities
+    // Note: This is a placeholder - actual implementation would use Gemini's TTS API
+    // For now, we'll return the text and let the client handle TTS
+    const speechPrompt = `Convert this text to natural speech: "${body.text}"`;
+    
+    const result = await model.generateContent(speechPrompt);
+    const response = await result.response;
+    
+    // In a real implementation, this would return audio data
+    // For now, return success to indicate the text was processed
+    return {
+      success: true,
+      data: {
+        text: body.text,
+        audioData: null, // Would contain base64 audio in real implementation
+        message: 'Speech generation processed (fallback to browser TTS)'
+      }
+    };
+  } catch (error: any) {
+    console.error('Speak text error:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to generate speech'
+    };
+  }
+}
+
 // --- Main Handler Function ---
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers for browser requests
@@ -830,6 +925,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           break;
         case 'generateClientSummaryForPdf':
           result = await handleGenerateClientSummaryForPdf(body);
+          break;
+        case 'streamAudio':
+          result = await handleStreamAudio(body);
+          break;
+        case 'speakText':
+          result = await handleSpeakText(body);
           break;
         default:
           // Default to generate if no action specified

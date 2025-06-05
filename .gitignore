@@ -26,3 +26,4 @@ dist-ssr
 .documentation
 .CHANGELOG.md
 .PROJECT_UPDATES.md
+.env.local

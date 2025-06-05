@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Test - Local Development</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-container { max-width: 600px; margin: 0 auto; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        #chatInput { width: 100%; padding: 10px; margin: 10px 0; }
+        #chatOutput { border: 1px solid #ccc; padding: 10px; min-height: 200px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Chat Functionality Test - Local Development</h1>
+        
+        <div id="envTest" class="test-result info">
+            <strong>Environment Check:</strong>
+            <div id="envDetails"></div>
+        </div>
+        
+        <div id="apiTest" class="test-result info">
+            <strong>API Test:</strong>
+            <div id="apiDetails"></div>
+        </div>
+        
+        <div>
+            <h3>Test Chat</h3>
+            <input type="text" id="chatInput" placeholder="Type a message to test..." value="Hello, can you help me?">
+            <button onclick="testChat()">Send Message</button>
+            <button onclick="clearOutput()">Clear</button>
+        </div>
+        
+        <div id="chatOutput"></div>
+    </div>
+
+    <script type="module">
+        // Environment check
+        const envDetails = document.getElementById('envDetails');
+        const isDev = import.meta.env.DEV;
+        const hasApiKey = !!import.meta.env.VITE_API_KEY;
+        
+        envDetails.innerHTML = `
+            <div>Development Mode: ${isDev}</div>
+            <div>API Key Available: ${hasApiKey}</div>
+            <div>API Key (first 10 chars): ${import.meta.env.VITE_API_KEY ? import.meta.env.VITE_API_KEY.substring(0, 10) + '...' : 'Not found'}</div>
+        `;
+        
+        // Test API functionality
+        async function testApiConnection() {
+            const apiDetails = document.getElementById('apiDetails');
+            try {
+                // Import the service
+                const { generateText, getServiceConfig } = await import('./services/geminiService.ts');
+                
+                const config = getServiceConfig();
+                apiDetails.innerHTML = `
+                    <div>Service Config: ${JSON.stringify(config, null, 2)}</div>
+                `;
+                
+                // Test a simple generation
+                const testResult = await generateText("Say hello");
+                apiDetails.innerHTML += `<div style="color: green;">✅ API Test Successful: ${testResult.substring(0, 100)}...</div>`;
+                
+            } catch (error) {
+                apiDetails.innerHTML = `<div style="color: red;">❌ API Test Failed: ${error.message}</div>`;
+                console.error('API Test Error:', error);
+            }
+        }
+        
+        // Test chat function
+        window.testChat = async function() {
+            const input = document.getElementById('chatInput');
+            const output = document.getElementById('chatOutput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            output.innerHTML += `<div style="margin: 10px 0; padding: 10px; background: #f0f0f0;"><strong>You:</strong> ${message}</div>`;
+            output.innerHTML += `<div style="margin: 10px 0; padding: 10px; background: #e3f2fd;"><strong>AI:</strong> <em>Thinking...</em></div>`;
+            
+            try {
+                const { generateText } = await import('./services/geminiService.ts');
+                const response = await generateText(message);
+                
+                // Replace the "Thinking..." message
+                const lastDiv = output.lastElementChild;
+                lastDiv.innerHTML = `<strong>AI:</strong> ${response}`;
+                lastDiv.style.background = '#e8f5e8';
+                
+            } catch (error) {
+                const lastDiv = output.lastElementChild;
+                lastDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+                lastDiv.style.background = '#ffebee';
+                console.error('Chat Error:', error);
+            }
+            
+            input.value = '';
+            output.scrollTop = output.scrollHeight;
+        };
+        
+        window.clearOutput = function() {
+            document.getElementById('chatOutput').innerHTML = '';
+        };
+        
+        // Run API test on load
+        testApiConnection();
+        
+        // Allow Enter key to send message
+        document.getElementById('chatInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                testChat();
+            }
+        });
+    </script>
+</body>
+</html> 

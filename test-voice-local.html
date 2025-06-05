@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Test - Local Development</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .test-container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .test-result { margin: 10px 0; padding: 15px; border-radius: 8px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        .warning { background-color: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+        .test-button { background: #007bff; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 5px; cursor: pointer; }
+        .test-button:hover { background: #0056b3; }
+        .test-button:disabled { background: #6c757d; cursor: not-allowed; }
+        .log-area { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 5px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+        .status-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+        .status-online { background-color: #28a745; }
+        .status-offline { background-color: #dc3545; }
+        .status-warning { background-color: #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎤 Voice Functionality Test Suite</h1>
+        <p>Comprehensive testing of voice features and error resolution</p>
+
+        <!-- Environment Status -->
+        <div class="test-result info">
+            <h3>📊 Environment Status</h3>
+            <div id="env-status">Checking environment...</div>
+        </div>
+
+        <!-- Error Summary -->
+        <div class="test-result" id="error-summary">
+            <h3>🚨 Error Summary</h3>
+            <div id="error-count">Checking for errors...</div>
+        </div>
+
+        <!-- Service Tests -->
+        <div class="test-result">
+            <h3>🔧 Service Function Tests</h3>
+            <button class="test-button" onclick="testGeminiService()">Test Gemini Service</button>
+            <button class="test-button" onclick="testDirectApiCalls()">Test Direct API Calls</button>
+            <button class="test-button" onclick="testProxyEndpoints()">Test Proxy Endpoints</button>
+            <button class="test-button" onclick="testVoiceFunctions()">Test Voice Functions</button>
+        </div>
+
+        <!-- Voice Tests -->
+        <div class="test-result">
+            <h3>🎤 Voice Functionality Tests</h3>
+            <button class="test-button" onclick="testBrowserSTT()">Test Browser Speech Recognition</button>
+            <button class="test-button" onclick="testBrowserTTS()">Test Browser Text-to-Speech</button>
+            <button class="test-button" onclick="testAudioProcessing()">Test Audio Processing</button>
+            <button class="test-button" onclick="startVoiceTest()">Start Full Voice Test</button>
+        </div>
+
+        <!-- Live Test Results -->
+        <div class="test-result">
+            <h3>📝 Test Results</h3>
+            <div id="test-log" class="log-area">Ready to run tests...</div>
+        </div>
+
+        <!-- Voice Test Area -->
+        <div class="test-result" id="voice-test-area" style="display: none;">
+            <h3>🎙️ Live Voice Test</h3>
+            <p>Click "Start Recording" and speak. The system will process your speech and respond.</p>
+            <button id="voice-btn" class="test-button" onclick="toggleVoiceTest()">Start Recording</button>
+            <div id="voice-status" class="info" style="margin-top: 10px;">Ready to start voice test</div>
+            <div id="voice-transcript" class="log-area" style="margin-top: 10px; min-height: 100px;">Transcript will appear here...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        let testLog = [];
+        let isRecording = false;
+        let recognition = null;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            testLog.push({ message: logEntry, type });
+            updateLogDisplay();
+            console.log(logEntry);
+        }
+
+        function updateLogDisplay() {
+            const logArea = document.getElementById('test-log');
+            logArea.innerHTML = testLog.map(entry => 
+                `<div class="${entry.type}">${entry.message}</div>`
+            ).join('');
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        // Environment Status Check
+        async function checkEnvironment() {
+            log('🔍 Checking environment configuration...', 'info');
+            
+            try {
+                // Check if we're in development mode
+                const isDev = import.meta.env.DEV;
+                const hasApiKey = !!import.meta.env.VITE_API_KEY;
+                const forceDirectApi = import.meta.env.VITE_FORCE_DIRECT_API === 'true';
+                
+                log(`Development Mode: ${isDev}`, isDev ? 'success' : 'warning');
+                log(`API Key Available: ${hasApiKey}`, hasApiKey ? 'success' : 'error');
+                log(`Force Direct API: ${forceDirectApi}`, forceDirectApi ? 'success' : 'info');
+                
+                const envStatus = document.getElementById('env-status');
+                envStatus.innerHTML = `
+                    <div><span class="status-indicator ${isDev ? 'status-online' : 'status-warning'}"></span>Development Mode: ${isDev}</div>
+                    <div><span class="status-indicator ${hasApiKey ? 'status-online' : 'status-offline'}"></span>API Key: ${hasApiKey ? 'Configured' : 'Missing'}</div>
+                    <div><span class="status-indicator ${forceDirectApi ? 'status-online' : 'status-warning'}"></span>Force Direct API: ${forceDirectApi}</div>
+                `;
+                
+                return { isDev, hasApiKey, forceDirectApi };
+            } catch (error) {
+                log(`❌ Environment check failed: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        // Test Gemini Service Import and Basic Functions
+        window.testGeminiService = async function() {
+            log('🧪 Testing Gemini Service import and basic functions...', 'info');
+            
+            try {
+                const geminiService = await import('/services/geminiService.ts');
+                log('✅ Gemini Service imported successfully', 'success');
+                
+                // Test service config
+                const config = geminiService.getServiceConfig();
+                log(`📋 Service Config: ${JSON.stringify(config, null, 2)}`, 'info');
+                
+                // Test health check
+                const isHealthy = await geminiService.checkProxyHealth();
+                log(`🏥 Health Check: ${isHealthy ? 'Healthy' : 'Failed'}`, isHealthy ? 'success' : 'warning');
+                
+                return true;
+            } catch (error) {
+                log(`❌ Gemini Service test failed: ${error.message}`, 'error');
+                return false;
+            }
+        };
+
+        // Test Direct API Calls
+        window.testDirectApiCalls = async function() {
+            log('🔗 Testing Direct API calls...', 'info');
+            
+            try {
+                const geminiService = await import('/services/geminiService.ts');
+                
+                // Test simple text generation
+                const testPrompt = "Say hello in a friendly way";
+                log(`📝 Testing text generation with prompt: "${testPrompt}"`, 'info');
+                
+                const response = await geminiService.generateText(testPrompt);
+                log(`✅ Text generation successful: ${response.substring(0, 100)}...`, 'success');
+                
+                return true;
+            } catch (error) {
+                log(`❌ Direct API test failed: ${error.message}`, 'error');
+                return false;
+            }
+        };
+
+        // Test Proxy Endpoints
+        window.testProxyEndpoints = async function() {
+            log('🌐 Testing Proxy endpoints...', 'info');
+            
+            const endpoints = [
+                '/api/gemini-proxy/health',
+                '/api/gemini-proxy/generate',
+                '/api/gemini-proxy/stream-audio',
+                '/api/gemini-proxy/speak-text'
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(endpoint, {
+                        method: endpoint.includes('health') ? 'GET' : 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: endpoint.includes('health') ? undefined : JSON.stringify({ test: true })
+                    });
+                    
+                    log(`📡 ${endpoint}: ${response.status} ${response.statusText}`, 
+                        response.ok ? 'success' : 'warning');
+                } catch (error) {
+                    log(`❌ ${endpoint}: ${error.message}`, 'error');
+                }
+            }
+        };
+
+        // Test Voice Functions
+        window.testVoiceFunctions = async function() {
+            log('🎤 Testing Voice functions...', 'info');
+            
+            try {
+                const geminiService = await import('/services/geminiService.ts');
+                
+                // Test streamAudio function
+                log('🔊 Testing streamAudio function...', 'info');
+                const mockAudioChunks = [new Float32Array([0.1, 0.2, 0.3])];
+                
+                await geminiService.streamAudio(
+                    mockAudioChunks,
+                    (transcript, isFinal) => {
+                        log(`📝 Transcript: ${transcript} (Final: ${isFinal})`, 'success');
+                    },
+                    (error) => {
+                        log(`❌ Audio error: ${error}`, 'error');
+                    }
+                );
+                
+                // Test speakText function
+                log('🗣️ Testing speakText function...', 'info');
+                await geminiService.speakText("Testing text to speech functionality");
+                log('✅ speakText function completed', 'success');
+                
+                return true;
+            } catch (error) {
+                log(`❌ Voice functions test failed: ${error.message}`, 'error');
+                return false;
+            }
+        };
+
+        // Test Browser Speech Recognition
+        window.testBrowserSTT = function() {
+            log('🎙️ Testing Browser Speech Recognition...', 'info');
+            
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                log('❌ Speech Recognition not supported in this browser', 'error');
+                return false;
+            }
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+            
+            recognition.onstart = () => {
+                log('✅ Speech Recognition started successfully', 'success');
+            };
+            
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                log(`📝 Speech Recognition result: "${transcript}"`, 'success');
+            };
+            
+            recognition.onerror = (event) => {
+                log(`❌ Speech Recognition error: ${event.error}`, 'error');
+            };
+            
+            recognition.onend = () => {
+                log('🔚 Speech Recognition ended', 'info');
+            };
+            
+            try {
+                recognition.start();
+                log('🎤 Speech Recognition test started - please speak...', 'info');
+                return true;
+            } catch (error) {
+                log(`❌ Failed to start Speech Recognition: ${error.message}`, 'error');
+                return false;
+            }
+        };
+
+        // Test Browser Text-to-Speech
+        window.testBrowserTTS = function() {
+            log('🗣️ Testing Browser Text-to-Speech...', 'info');
+            
+            if (!('speechSynthesis' in window)) {
+                log('❌ Speech Synthesis not supported in this browser', 'error');
+                return false;
+            }
+            
+            const utterance = new SpeechSynthesisUtterance('Testing browser text to speech functionality');
+            
+            utterance.onstart = () => {
+                log('✅ Speech Synthesis started successfully', 'success');
+            };
+            
+            utterance.onend = () => {
+                log('✅ Speech Synthesis completed successfully', 'success');
+            };
+            
+            utterance.onerror = (event) => {
+                log(`❌ Speech Synthesis error: ${event.error}`, 'error');
+            };
+            
+            try {
+                window.speechSynthesis.speak(utterance);
+                log('🔊 Text-to-Speech test started...', 'info');
+                return true;
+            } catch (error) {
+                log(`❌ Failed to start Text-to-Speech: ${error.message}`, 'error');
+                return false;
+            }
+        };
+
+        // Test Audio Processing
+        window.testAudioProcessing = async function() {
+            log('🎵 Testing Audio Processing capabilities...', 'info');
+            
+            try {
+                // Test AudioContext
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                const audioContext = new AudioContext();
+                log('✅ AudioContext created successfully', 'success');
+                
+                // Test getUserMedia
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                log('✅ Microphone access granted', 'success');
+                
+                // Test MediaStreamSource
+                const source = audioContext.createMediaStreamSource(stream);
+                log('✅ MediaStreamSource created successfully', 'success');
+                
+                // Clean up
+                stream.getTracks().forEach(track => track.stop());
+                await audioContext.close();
+                log('✅ Audio processing test completed successfully', 'success');
+                
+                return true;
+            } catch (error) {
+                log(`❌ Audio processing test failed: ${error.message}`, 'error');
+                return false;
+            }
+        };
+
+        // Start Full Voice Test
+        window.startVoiceTest = function() {
+            log('🎤 Starting full voice test...', 'info');
+            document.getElementById('voice-test-area').style.display = 'block';
+            document.getElementById('voice-test-area').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        // Toggle Voice Test
+        window.toggleVoiceTest = async function() {
+            const btn = document.getElementById('voice-btn');
+            const status = document.getElementById('voice-status');
+            const transcript = document.getElementById('voice-transcript');
+            
+            if (!isRecording) {
+                // Start recording
+                try {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    if (!SpeechRecognition) {
+                        throw new Error('Speech Recognition not supported');
+                    }
+                    
+                    recognition = new SpeechRecognition();
+                    recognition.continuous = true;
+                    recognition.interimResults = true;
+                    recognition.lang = 'en-US';
+                    
+                    recognition.onstart = () => {
+                        isRecording = true;
+                        btn.textContent = 'Stop Recording';
+                        btn.style.background = '#dc3545';
+                        status.innerHTML = '<span class="status-indicator status-online"></span>Recording... Speak now!';
+                        status.className = 'success';
+                        log('🎤 Voice recording started', 'success');
+                    };
+                    
+                    recognition.onresult = (event) => {
+                        let interimTranscript = '';
+                        let finalTranscript = '';
+                        
+                        for (let i = event.resultIndex; i < event.results.length; i++) {
+                            const transcriptPart = event.results[i][0].transcript;
+                            if (event.results[i].isFinal) {
+                                finalTranscript += transcriptPart;
+                            } else {
+                                interimTranscript += transcriptPart;
+                            }
+                        }
+                        
+                        transcript.innerHTML = `
+                            <div><strong>Final:</strong> ${finalTranscript}</div>
+                            <div><strong>Interim:</strong> ${interimTranscript}</div>
+                        `;
+                        
+                        if (finalTranscript) {
+                            log(`📝 Final transcript: "${finalTranscript}"`, 'success');
+                            processVoiceInput(finalTranscript);
+                        }
+                    };
+                    
+                    recognition.onerror = (event) => {
+                        log(`❌ Speech recognition error: ${event.error}`, 'error');
+                        stopRecording();
+                    };
+                    
+                    recognition.onend = () => {
+                        stopRecording();
+                    };
+                    
+                    recognition.start();
+                    
+                } catch (error) {
+                    log(`❌ Failed to start voice recording: ${error.message}`, 'error');
+                    status.innerHTML = `<span class="status-indicator status-offline"></span>Error: ${error.message}`;
+                    status.className = 'error';
+                }
+            } else {
+                // Stop recording
+                stopRecording();
+            }
+        };
+
+        function stopRecording() {
+            if (recognition) {
+                recognition.stop();
+                recognition = null;
+            }
+            
+            isRecording = false;
+            const btn = document.getElementById('voice-btn');
+            const status = document.getElementById('voice-status');
+            
+            btn.textContent = 'Start Recording';
+            btn.style.background = '#007bff';
+            status.innerHTML = '<span class="status-indicator status-warning"></span>Recording stopped';
+            status.className = 'info';
+            log('🔚 Voice recording stopped', 'info');
+        }
+
+        async function processVoiceInput(text) {
+            log(`🤖 Processing voice input: "${text}"`, 'info');
+            
+            try {
+                const geminiService = await import('/services/geminiService.ts');
+                const response = await geminiService.generateText(`Respond to this voice input: "${text}"`);
+                
+                log(`🤖 AI Response: ${response}`, 'success');
+                
+                // Speak the response
+                await geminiService.speakText(response);
+                
+            } catch (error) {
+                log(`❌ Failed to process voice input: ${error.message}`, 'error');
+            }
+        }
+
+        // Check for console errors
+        function checkConsoleErrors() {
+            const errorCount = document.getElementById('error-count');
+            const errorSummary = document.getElementById('error-summary');
+            
+            // Monitor console errors
+            let errorCounter = 0;
+            const originalError = console.error;
+            console.error = function(...args) {
+                errorCounter++;
+                originalError.apply(console, args);
+                updateErrorCount();
+            };
+            
+            function updateErrorCount() {
+                errorCount.innerHTML = `
+                    <div><span class="status-indicator ${errorCounter === 0 ? 'status-online' : 'status-offline'}"></span>Console Errors: ${errorCounter}</div>
+                    <div>Last checked: ${new Date().toLocaleTimeString()}</div>
+                `;
+                
+                if (errorCounter === 0) {
+                    errorSummary.className = 'test-result success';
+                } else if (errorCounter < 10) {
+                    errorSummary.className = 'test-result warning';
+                } else {
+                    errorSummary.className = 'test-result error';
+                }
+            }
+            
+            updateErrorCount();
+            
+            // Check every 5 seconds
+            setInterval(updateErrorCount, 5000);
+        }
+
+        // Initialize tests
+        async function initialize() {
+            log('🚀 Initializing Voice Test Suite...', 'info');
+            
+            await checkEnvironment();
+            checkConsoleErrors();
+            
+            log('✅ Voice Test Suite ready!', 'success');
+            log('👆 Click the test buttons above to run specific tests', 'info');
+        }
+
+        // Start initialization
+        initialize();
+    </script>
+</body>
+</html> 
