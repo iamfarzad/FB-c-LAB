@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Theme } from '../../../types';
 // Background pattern is now handled by Layout component
@@ -49,8 +48,7 @@ export const WhyWorkWithMeSection: React.FC<WhyWorkWithMeSectionProps> = ({ them
   return (
     <section 
       id="why-work-section"
-      className={`relative py-24 lg:py-32 transition-all duration-700 overflow-hidden
-        ${theme === Theme.DARK ? 'bg-black' : 'bg-white'}`}
+      className="relative py-24 lg:py-32 transition-all duration-700 overflow-hidden"
     >
       {/* Background pattern is handled by Layout component */}
 
@@ -125,7 +123,7 @@ export const WhyWorkWithMeSection: React.FC<WhyWorkWithMeSectionProps> = ({ them
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fade-in-up {
           from {
             opacity: 0;

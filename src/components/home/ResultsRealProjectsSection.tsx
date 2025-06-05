@@ -84,11 +84,8 @@ export const ResultsRealProjectsSection: React.FC<ResultsRealProjectsSectionProp
   return (
     <section 
       id="results-section"
-      className={`relative py-24 lg:py-32 transition-all duration-700 overflow-hidden
-        ${theme === Theme.DARK ? 'bg-black' : 'bg-white'}`}
+      className="relative py-24 lg:py-32 transition-all duration-700 overflow-hidden"
     >
-      {/* Background pattern is handled by Layout component */}
-
       <div className="container mx-auto px-6 relative z-10">
         {/* Clean section header */}
         <div className={`text-center mb-20 ${isVisible ? 'animate-fade-in-up' : 'opacity-0'}`}>
@@ -165,7 +162,7 @@ export const ResultsRealProjectsSection: React.FC<ResultsRealProjectsSectionProp
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fade-in-up {
           from {
             opacity: 0;

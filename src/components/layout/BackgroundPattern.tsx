@@ -9,19 +9,22 @@ export function BackgroundPattern({ className }: { className?: string }) {
   const isDark = resolvedTheme === 'dark';
 
   return (
-    <div className={cn("fixed inset-0 -z-10", className)}>
-      <InteractiveGridPattern
-        className={cn(
-          "h-full w-full",
-          isDark 
-            ? "opacity-100 [mask-image:radial-gradient(ellipse_at_center,transparent_20%,rgba(0,0,0,0.8))]"
-            : "opacity-80 [mask-image:radial-gradient(ellipse_at_center,transparent_20%,white)]",
-          "[&>div]:h-full [&>div]:w-full"
-        )}
-        size={60}
-        cellSize={2}
-        interactive
-      />
+    <div className={cn("fixed inset-0 -z-10 overflow-hidden", className)}>
+      <div className="absolute inset-0 h-[200%] w-full -translate-y-1/4">
+        <InteractiveGridPattern
+          className={cn(
+            "h-full w-full skew-y-12",
+            isDark 
+              ? "opacity-45 [mask-image:radial-gradient(400px_circle_at_center,white,transparent)]"
+              : "opacity-45 [mask-image:radial-gradient(400px_circle_at_center,white,transparent)]",
+            isDark ? "text-white/10" : "text-black/10",
+            "[&>div]:h-full [&>div]:w-full"
+          )}
+          size={60}
+          cellSize={2}
+          interactive
+        />
+      </div>
     </div>
   );
 }
