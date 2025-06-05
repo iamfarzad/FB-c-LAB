@@ -298,7 +298,8 @@ export const FullScreenVoiceOverlay: React.FC<FullScreenVoiceOverlayProps> = ({
         {/* Debug info */}
         <div className="absolute top-4 left-4 text-xs text-white bg-black/50 p-2 rounded">
           Debug: inputNode={inputNode ? 'connected' : 'null'}, recording={isRecording ? 'yes' : 'no'}, aiSpeaking={isAiSpeaking ? 'yes' : 'no'}
-          <br />Visual3D: {inputNode ? 'should render' : 'no input'}, theme={theme}
+          <br />Visual3D: {inputNode ? 'should render' : 'no input'}, theme={theme} ({theme === Theme.DARK ? 'DARK' : 'LIGHT'})
+          <br />Status: {status}
         </div>
       </div>
       

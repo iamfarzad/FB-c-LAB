@@ -5,109 +5,136 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voice API Test</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
-        button { padding: 10px 15px; margin: 5px; }
-        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; }
-        .error { background: #ffebee; color: #c62828; }
-        .success { background: #e8f5e8; color: #2e7d32; }
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #2a2a2a;
+        }
+        button {
+            background: #f97316;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #ea580c;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .error {
+            color: #ff6b6b;
+        }
+        .success {
+            color: #51cf66;
+        }
+        .info {
+            color: #74c0fc;
+        }
     </style>
 </head>
 <body>
     <h1>Voice API Test</h1>
     
     <div class="test-section">
-        <h2>1. Environment Check</h2>
+        <h2>Environment Check</h2>
         <button onclick="checkEnvironment()">Check Environment</button>
         <div id="env-result" class="result"></div>
     </div>
-    
+
     <div class="test-section">
-        <h2>2. API Test</h2>
-        <button onclick="testAPI()">Test API Call</button>
+        <h2>API Test</h2>
+        <button onclick="testAPI()">Test Gemini API</button>
         <div id="api-result" class="result"></div>
     </div>
-    
+
     <div class="test-section">
-        <h2>3. Speech Recognition Test</h2>
+        <h2>Speech Recognition Test</h2>
         <button onclick="testSpeechRecognition()">Test Speech Recognition</button>
         <div id="speech-result" class="result"></div>
     </div>
-    
+
     <div class="test-section">
-        <h2>4. Text-to-Speech Test</h2>
+        <h2>Text-to-Speech Test</h2>
         <button onclick="testTextToSpeech()">Test Text-to-Speech</button>
         <div id="tts-result" class="result"></div>
     </div>
 
-    <script>
-        function checkEnvironment() {
+    <div class="test-section">
+        <h2>Full Voice Flow Test</h2>
+        <button onclick="testFullVoiceFlow()">Test Full Voice Flow</button>
+        <div id="voice-flow-result" class="result"></div>
+    </div>
+
+    <script type="module">
+        window.checkEnvironment = function() {
             const result = document.getElementById('env-result');
-            const checks = [];
+            result.innerHTML = 'Checking environment...';
             
-            // Check if we're in development
-            checks.push(`Development mode: ${window.location.hostname === 'localhost'}`);
+            const env = {
+                isDevelopment: import.meta.env.DEV,
+                hasApiKey: !!import.meta.env.VITE_API_KEY,
+                apiKeyLength: import.meta.env.VITE_API_KEY ? import.meta.env.VITE_API_KEY.length : 0,
+                speechRecognition: !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+                speechSynthesis: !!window.speechSynthesis,
+                userAgent: navigator.userAgent
+            };
             
-            // Check Speech Recognition
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            checks.push(`Speech Recognition: ${SpeechRecognition ? 'Available' : 'Not Available'}`);
-            
-            // Check Speech Synthesis
-            checks.push(`Speech Synthesis: ${window.speechSynthesis ? 'Available' : 'Not Available'}`);
-            
-            // Check Audio Context
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            checks.push(`Audio Context: ${AudioContext ? 'Available' : 'Not Available'}`);
-            
-            result.innerHTML = checks.join('<br>');
-            result.className = 'result success';
-        }
-        
-        async function testAPI() {
+            result.innerHTML = `<span class="info">Environment:</span>\n${JSON.stringify(env, null, 2)}`;
+        };
+
+        window.testAPI = async function() {
             const result = document.getElementById('api-result');
             result.innerHTML = 'Testing API...';
-            result.className = 'result';
             
             try {
-                // Test the generateText function directly
-                const response = await fetch('/api/gemini-proxy/generate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        prompt: 'Say hello in a friendly way',
-                        model: 'gemini-2.0-flash-001',
-                        systemInstruction: 'You are a helpful AI assistant.'
-                    }),
-                });
+                const { generateText, checkProxyHealth } = await import('./services/geminiService.ts');
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                // Test health check first
+                result.innerHTML += '\n<span class="info">Testing health check...</span>';
+                const healthResult = await checkProxyHealth();
+                result.innerHTML += `\nHealth check: ${healthResult ? 'PASS' : 'FAIL'}`;
                 
-                const data = await response.json();
+                // Test text generation
+                result.innerHTML += '\n<span class="info">Testing text generation...</span>';
+                const response = await generateText('Say hello in a friendly way');
+                result.innerHTML += `\n<span class="success">API Response:</span>\n${response}`;
                 
-                if (data.success && data.data?.text) {
-                    result.innerHTML = `✅ API Success!<br><strong>Response:</strong> ${data.data.text}`;
-                    result.className = 'result success';
-                } else {
-                    result.innerHTML = `❌ API Error: ${data.error || 'No text in response'}`;
-                    result.className = 'result error';
-                }
             } catch (error) {
-                result.innerHTML = `❌ API Error: ${error.message}`;
-                result.className = 'result error';
+                result.innerHTML += `\n<span class="error">API Error:</span>\n${error.message}`;
+                console.error('API Test Error:', error);
             }
-        }
-        
-        function testSpeechRecognition() {
+        };
+
+        window.testSpeechRecognition = function() {
             const result = document.getElementById('speech-result');
+            result.innerHTML = 'Testing speech recognition...';
+            
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             
             if (!SpeechRecognition) {
-                result.innerHTML = '❌ Speech Recognition not supported';
-                result.className = 'result error';
+                result.innerHTML = '<span class="error">Speech recognition not supported</span>';
                 return;
             }
             
@@ -116,57 +143,101 @@
             recognition.interimResults = true;
             recognition.lang = 'en-US';
             
-            result.innerHTML = '🎤 Listening... Say something!';
-            result.className = 'result';
+            recognition.onstart = () => {
+                result.innerHTML = '<span class="info">Listening... (speak now)</span>';
+            };
             
             recognition.onresult = (event) => {
                 let transcript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                for (let i = 0; i < event.results.length; i++) {
                     transcript += event.results[i][0].transcript;
                 }
-                result.innerHTML = `✅ Heard: "${transcript}"`;
-                result.className = 'result success';
+                result.innerHTML = `<span class="success">Heard:</span>\n${transcript}`;
             };
             
             recognition.onerror = (event) => {
-                result.innerHTML = `❌ Speech Recognition Error: ${event.error}`;
-                result.className = 'result error';
+                result.innerHTML = `<span class="error">Speech recognition error:</span>\n${event.error}`;
+            };
+            
+            recognition.onend = () => {
+                result.innerHTML += '\n<span class="info">Speech recognition ended</span>';
             };
             
             recognition.start();
-        }
-        
-        function testTextToSpeech() {
+        };
+
+        window.testTextToSpeech = function() {
             const result = document.getElementById('tts-result');
+            result.innerHTML = 'Testing text-to-speech...';
             
             if (!window.speechSynthesis) {
-                result.innerHTML = '❌ Text-to-Speech not supported';
-                result.className = 'result error';
+                result.innerHTML = '<span class="error">Text-to-speech not supported</span>';
                 return;
             }
             
-            const utterance = new SpeechSynthesisUtterance('Hello! This is a test of text to speech functionality.');
+            const utterance = new SpeechSynthesisUtterance('Hello! This is a test of the text-to-speech functionality.');
             utterance.lang = 'en-US';
             utterance.rate = 1.0;
             utterance.pitch = 1.0;
             
             utterance.onstart = () => {
-                result.innerHTML = '🔊 Speaking...';
-                result.className = 'result';
+                result.innerHTML = '<span class="info">Speaking...</span>';
             };
             
             utterance.onend = () => {
-                result.innerHTML = '✅ Text-to-Speech completed successfully!';
-                result.className = 'result success';
+                result.innerHTML = '<span class="success">Text-to-speech completed successfully</span>';
             };
             
             utterance.onerror = (event) => {
-                result.innerHTML = `❌ Text-to-Speech Error: ${event.error}`;
-                result.className = 'result error';
+                result.innerHTML = `<span class="error">Text-to-speech error:</span>\n${event.error}`;
             };
             
             window.speechSynthesis.speak(utterance);
-        }
+        };
+
+        window.testFullVoiceFlow = async function() {
+            const result = document.getElementById('voice-flow-result');
+            result.innerHTML = 'Testing full voice flow...';
+            
+            try {
+                // Import the service
+                const { generateText } = await import('./services/geminiService.ts');
+                
+                // Test the full flow with a sample input
+                result.innerHTML += '\n<span class="info">Step 1: Testing API with sample input...</span>';
+                const testInput = 'Hello, how are you today?';
+                const response = await generateText(testInput);
+                
+                if (response && response.trim()) {
+                    result.innerHTML += `\n<span class="success">Step 1 PASS:</span>\nInput: ${testInput}\nResponse: ${response}`;
+                    
+                    // Test TTS with the response
+                    result.innerHTML += '\n<span class="info">Step 2: Testing TTS with AI response...</span>';
+                    
+                    if (window.speechSynthesis) {
+                        const utterance = new SpeechSynthesisUtterance(response);
+                        utterance.onstart = () => {
+                            result.innerHTML += '\n<span class="info">AI is speaking...</span>';
+                        };
+                        utterance.onend = () => {
+                            result.innerHTML += '\n<span class="success">Step 2 PASS: Full voice flow completed!</span>';
+                        };
+                        utterance.onerror = (event) => {
+                            result.innerHTML += `\n<span class="error">Step 2 FAIL: TTS error: ${event.error}</span>`;
+                        };
+                        window.speechSynthesis.speak(utterance);
+                    } else {
+                        result.innerHTML += '\n<span class="error">Step 2 FAIL: TTS not supported</span>';
+                    }
+                } else {
+                    result.innerHTML += '\n<span class="error">Step 1 FAIL: Empty or invalid API response</span>';
+                }
+                
+            } catch (error) {
+                result.innerHTML += `\n<span class="error">Full voice flow error:</span>\n${error.message}`;
+                console.error('Full Voice Flow Error:', error);
+            }
+        };
     </script>
 </body>
 </html> 

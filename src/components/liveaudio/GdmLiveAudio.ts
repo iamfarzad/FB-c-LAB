@@ -304,6 +304,8 @@ export class GdmLiveAudio extends LitElement {
 
   private async processUserSpeech(text: string) {
     this.updateStatus('Processing user speech...');
+    console.log('[GdmLiveAudio] Processing user speech:', text);
+    
     try {
       // Use the geminiService which handles development fallback automatically
       const { generateText } = await import('../../../services/geminiService');
@@ -312,8 +314,9 @@ export class GdmLiveAudio extends LitElement {
       const response = await generateText(text, this.systemInstruction);
       console.log('[GdmLiveAudio] Got response:', response);
       
-      if (response) {
+      if (response && response.trim()) {
         this.updateStatus('Speaking response...');
+        console.log('[GdmLiveAudio] About to speak response:', response);
         this.speakAiResponse(response);
         
         // Dispatch AI speech event
@@ -322,7 +325,9 @@ export class GdmLiveAudio extends LitElement {
           bubbles: true
         }));
       } else {
-        throw new Error('Empty response from AI');
+        console.warn('[GdmLiveAudio] Empty or invalid response from AI:', response);
+        this.updateError('Received empty response from AI');
+        this.updateStatus('Ready');
       }
     } catch (error) {
       console.error('[GdmLiveAudio] Error processing speech:', error);
@@ -332,24 +337,36 @@ export class GdmLiveAudio extends LitElement {
   }
 
   private speakAiResponse(text: string) {
+    console.log('[GdmLiveAudio] speakAiResponse called with text:', text);
+    
     if (!text || text.trim() === '') {
       console.warn('[GdmLiveAudio] No text to speak.');
       this.dispatchEvent(new CustomEvent('ai-speaking-state', { detail: { isAiSpeaking: false } }));
       return;
     }
 
+    // Check if speech synthesis is available
+    if (!('speechSynthesis' in window)) {
+      console.error('[GdmLiveAudio] Speech synthesis not supported in this browser');
+      this.updateError('Text-to-speech not supported in this browser');
+      this.dispatchEvent(new CustomEvent('ai-speaking-state', { detail: { isAiSpeaking: false } }));
+      return;
+    }
+
     // Stop any ongoing speech
     if (this.speechUtterance) {
+      console.log('[GdmLiveAudio] Stopping previous speech');
       window.speechSynthesis.cancel();
     }
 
+    console.log('[GdmLiveAudio] Creating new speech utterance');
     this.speechUtterance = new SpeechSynthesisUtterance(text);
     this.speechUtterance.lang = 'en-US';
     this.speechUtterance.rate = 1.0;
     this.speechUtterance.pitch = 1.0;
 
     this.speechUtterance.onstart = () => {
-      console.log('[GdmLiveAudio] AI speaking (TTS)');
+      console.log('[GdmLiveAudio] AI speaking started (TTS)');
       this.dispatchEvent(new CustomEvent('ai-speaking-state', { detail: { isAiSpeaking: true } }));
     };
 
@@ -357,6 +374,7 @@ export class GdmLiveAudio extends LitElement {
       console.log('[GdmLiveAudio] AI finished speaking (TTS)');
       this.dispatchEvent(new CustomEvent('ai-speaking-state', { detail: { isAiSpeaking: false } }));
       this.speechUtterance = null;
+      this.updateStatus('Ready to listen');
     };
 
     this.speechUtterance.onerror = (event) => {
@@ -364,8 +382,10 @@ export class GdmLiveAudio extends LitElement {
       this.updateError(`TTS error: ${event.error}`);
       this.dispatchEvent(new CustomEvent('ai-speaking-state', { detail: { isAiSpeaking: false } }));
       this.speechUtterance = null;
+      this.updateStatus('Ready to listen');
     };
 
+    console.log('[GdmLiveAudio] Starting speech synthesis');
     window.speechSynthesis.speak(this.speechUtterance);
   }
 

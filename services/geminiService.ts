@@ -16,125 +16,149 @@ interface ProxyResponse {
   error?: string;
 }
 
-// Serverless proxy configuration
-const PROXY_ENDPOINT = '/api/gemini-proxy'; // Your serverless function endpoint
-
-// Development fallback - check if we can use direct API
+// Development environment detection
 const isDevelopment = import.meta.env.DEV;
-const hasDirectApiKey = import.meta.env.VITE_API_KEY || import.meta.env.GEMINI_API_KEY_SERVER;
+const hasDirectApiKey = !!import.meta.env.VITE_API_KEY;
 
-// Import Google AI for development fallback
-let GoogleGenerativeAI: any = null;
-let isGoogleAILoaded = false;
+console.log('[GeminiService] Environment:', { 
+  isDevelopment, 
+  hasDirectApiKey,
+  mode: isDevelopment && hasDirectApiKey ? 'development-direct' : 'production-proxy'
+});
 
+// Proxy endpoint configuration
+const PROXY_ENDPOINT = '/api/gemini-proxy';
+
+// Load Google AI SDK for development
 const loadGoogleAI = async () => {
-  if (!GoogleGenerativeAI && isDevelopment && hasDirectApiKey) {
-    try {
-      const module = await import('@google/generative-ai');
-      GoogleGenerativeAI = module.GoogleGenerativeAI;
-      isGoogleAILoaded = true;
-      console.log('Google AI SDK loaded for development fallback');
-    } catch (error) {
-      console.warn('Google AI SDK not available for development fallback:', error);
-    }
-  }
-};
-
-// Development fallback function
-const makeDirectApiCall = async (action: string, data: any): Promise<ProxyResponse> => {
-  // Load Google AI SDK if not already loaded
-  if (!isGoogleAILoaded) {
-    await loadGoogleAI();
+  if (!isDevelopment || !hasDirectApiKey) {
+    return null;
   }
   
-  if (!GoogleGenerativeAI || !hasDirectApiKey) {
-    return {
-      success: false,
-      error: 'Development fallback not available - deploy to test proxy'
-    };
+  try {
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(import.meta.env.VITE_API_KEY);
+    console.log('[GeminiService] Google AI SDK loaded successfully');
+    return genAI;
+  } catch (error) {
+    console.error('[GeminiService] Failed to load Google AI SDK:', error);
+    return null;
+  }
+};
+
+// Direct API call for development
+const makeDirectApiCall = async (action: string, data: any): Promise<ProxyResponse> => {
+  if (!isDevelopment || !hasDirectApiKey) {
+    throw new Error('Direct API calls only available in development with API key');
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(import.meta.env.VITE_API_KEY || import.meta.env.GEMINI_API_KEY_SERVER);
-    
+    const genAI = await loadGoogleAI();
+    if (!genAI) {
+      throw new Error('Failed to initialize Google AI SDK');
+    }
+
     switch (action) {
       case 'generate': {
-        const model = genAI.getGenerativeModel({
-          model: data.model || 'gemini-2.0-flash-001',
-          systemInstruction: data.systemInstruction,
-          tools: [{ googleSearchRetrieval: {} }],
+        const model = genAI.getGenerativeModel({ 
+          model: data.model || GEMINI_TEXT_MODEL,
+          systemInstruction: data.systemInstruction
         });
+        
         const result = await model.generateContent(data.prompt);
         const response = await result.response;
-        return {
-          success: true,
-          data: {
-            text: response.text(),
-            sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks
-              ?.map((chunk: any) => chunk.web && ({ uri: chunk.web.uri, title: chunk.web.title }))
-              .filter(Boolean) || []
-          }
-        };
+        const text = response.text();
+        
+        return { success: true, data: { text } };
       }
+      
+      case 'stream': {
+        const model = genAI.getGenerativeModel({ 
+          model: data.model || GEMINI_TEXT_MODEL,
+          systemInstruction: data.systemInstruction
+        });
+        
+        const result = await model.generateContentStream(data.prompt);
+        let fullText = '';
+        
+        for await (const chunk of result.stream) {
+          const chunkText = chunk.text();
+          fullText += chunkText;
+          if (data.onChunk) {
+            data.onChunk(chunkText);
+          }
+        }
+        
+        return { success: true, data: { text: fullText } };
+      }
+      
       case 'analyze-image': {
-        const model = genAI.getGenerativeModel({ model: data.model || 'gemini-2.0-flash-001' });
+        const model = genAI.getGenerativeModel({ model: data.model || GEMINI_TEXT_MODEL });
+        
         const imagePart = {
           inlineData: {
-            mimeType: data.mimeType || 'image/jpeg',
-            data: data.image
+            data: data.image,
+            mimeType: data.mimeType
           }
         };
-        const textPart = { text: data.prompt || 'Describe this image' };
-        const result = await model.generateContent([textPart, imagePart]);
+        
+        const result = await model.generateContent([data.prompt, imagePart]);
         const response = await result.response;
-        return {
-          success: true,
-          data: { text: response.text() }
-        };
+        const text = response.text();
+        
+        return { success: true, data: { text } };
       }
+      
       case 'health': {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-001' });
-        await model.generateContent('Hello');
-        return {
-          success: true,
-          data: { status: 'healthy', timestamp: new Date().toISOString() }
-        };
+        // Simple health check for development
+        return { success: true, data: { status: 'healthy', mode: 'development' } };
       }
+      
       default:
-        return {
-          success: false,
-          error: 'Unsupported action in development fallback'
-        };
+        throw new Error(`Unknown action: ${action}`);
     }
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'Development fallback error'
+  } catch (error) {
+    console.error(`[GeminiService] Direct API call failed for ${action}:`, error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
     };
   }
 };
 
-// Utility function to make proxy requests with development fallback
+// Proxy request function
 const makeProxyRequest = async (endpoint: string, data: any): Promise<ProxyResponse> => {
-  // In development, ALWAYS try direct API first if available
-  if (isDevelopment && hasDirectApiKey) {
-    console.log('[geminiService] Using development fallback for:', endpoint);
-    try {
-      const action = endpoint.replace('/', '');
-      return await makeDirectApiCall(action, data);
-    } catch (error) {
-      console.error('[geminiService] Development fallback failed:', error);
-      // Continue to try proxy if direct API fails
-    }
-  }
-
   try {
-    // Fix endpoint path - remove leading slash if present
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-    const url = `${PROXY_ENDPOINT}/${cleanEndpoint}`;
-    console.log('[geminiService] Calling proxy URL:', url);
-    
-    const response = await fetch(url, {
+    // In development, try direct API first if available
+    if (isDevelopment && hasDirectApiKey) {
+      console.log('[GeminiService] Using development direct API for:', endpoint);
+      
+      // Map endpoint to action
+      const actionMap: Record<string, string> = {
+        '/generate': 'generate',
+        '/stream': 'stream', 
+        '/analyze-image': 'analyze-image',
+        '/follow-up': 'generate',
+        '/health': 'health'
+      };
+      
+      const action = actionMap[endpoint];
+      if (action) {
+        try {
+          const result = await makeDirectApiCall(action, data);
+          if (result.success) {
+            return result;
+          }
+          console.warn('[GeminiService] Direct API failed, falling back to proxy:', result.error);
+        } catch (directError) {
+          console.warn('[GeminiService] Direct API error, falling back to proxy:', directError);
+        }
+      }
+    }
+
+    // Fallback to proxy (production mode or development fallback)
+    console.log('[GeminiService] Using proxy for:', endpoint);
+    const response = await fetch(`${PROXY_ENDPOINT}${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -143,45 +167,17 @@ const makeProxyRequest = async (endpoint: string, data: any): Promise<ProxyRespo
     });
 
     if (!response.ok) {
-      // If proxy fails in development, try direct API as fallback
-      if (isDevelopment && hasDirectApiKey) {
-        console.log('[geminiService] Proxy failed, trying development fallback');
-        const action = endpoint.replace('/', '');
-        return await makeDirectApiCall(action, data);
-      }
-      
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(`Proxy call failed: ${errorData.error || response.statusText}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const result = await response.json();
-    
-    // Handle both old and new response formats
-    if (result.success !== undefined) {
-      return {
-        success: result.success,
-        data: result.data,
-        error: result.error
-      };
-    } else {
-      // Legacy format
-      return {
-        success: true,
-        data: result,
-        error: undefined
-      };
-    }
+    return result;
   } catch (error) {
-    console.error(`[geminiService] Error calling proxy for ${endpoint}:`, error);
-    
-    // If proxy fails in development, try direct API as fallback
-    if (isDevelopment && hasDirectApiKey) {
-      console.log('[geminiService] Proxy failed, trying development fallback');
-      const action = endpoint.replace('/', '');
-      return await makeDirectApiCall(action, data);
-    }
-    
-    throw error;
+    console.error(`[GeminiService] Proxy request failed for ${endpoint}:`, error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Network error' 
+    };
   }
 };
 
