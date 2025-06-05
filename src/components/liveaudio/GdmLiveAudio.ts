@@ -37,6 +37,8 @@ export class GdmLiveAudio extends LitElement {
   private isProcessing = false;
   private streamReader: ReadableStreamDefaultReader<AudioStreamResponse> | null = null;
   private autoStopTimeout: number | null = null;
+  private lastRequestTime = 0;
+  private readonly REQUEST_THROTTLE_MS = 1000; // Minimum 1 second between requests
   
   // Public properties
   @property({ type: String }) theme: Theme = Theme.LIGHT;
@@ -228,6 +230,14 @@ export class GdmLiveAudio extends LitElement {
 
   private async streamAudioToGemini(audioChunks: Float32Array[]): Promise<void> {
     try {
+      // Throttle requests to prevent rate limiting
+      const now = Date.now();
+      if (now - this.lastRequestTime < this.REQUEST_THROTTLE_MS) {
+        console.log('[GdmLiveAudio] Throttling request to prevent rate limiting');
+        return;
+      }
+      this.lastRequestTime = now;
+
       // Import the streamAudio function
       const { streamAudio } = await import('../../../services/geminiService');
       
@@ -362,6 +372,14 @@ export class GdmLiveAudio extends LitElement {
   }
 
   private async processUserSpeech(text: string): Promise<void> {
+    // Throttle requests to prevent rate limiting
+    const now = Date.now();
+    if (now - this.lastRequestTime < this.REQUEST_THROTTLE_MS) {
+      console.log('[GdmLiveAudio] Throttling speech processing to prevent rate limiting');
+      return;
+    }
+    this.lastRequestTime = now;
+
     this.updateStatus('Processing user speech...');
     console.log('[GdmLiveAudio] Processing user speech:', text);
     
