@@ -124,7 +124,7 @@ const makeProxyRequest = async (endpoint: string, data: any): Promise<ProxyRespo
   }
 
   try {
-    const response = await fetch(`${PROXY_ENDPOINT}${endpoint}`, {
+    const response = await fetch(`${PROXY_ENDPOINT}/${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -133,29 +133,45 @@ const makeProxyRequest = async (endpoint: string, data: any): Promise<ProxyRespo
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        // Rate limited
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`Rate limit exceeded. ${errorData.error || 'Please try again later.'}`);
+      // If proxy fails in development, try direct API as fallback
+      if (isDevelopment && hasDirectApiKey) {
+        console.log('[geminiService] Proxy failed, trying development fallback');
+        const action = endpoint.replace('/', '');
+        return await makeDirectApiCall(action, data);
       }
-      throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(`Proxy call failed: ${errorData.error || response.statusText}`);
     }
 
-    return await response.json();
-  } catch (error) {
-    console.warn('Proxy request failed:', error);
+    const result = await response.json();
     
-    // Try development fallback as last resort
+    // Handle both old and new response formats
+    if (result.success !== undefined) {
+      return {
+        success: result.success,
+        data: result.data,
+        error: result.error
+      };
+    } else {
+      // Legacy format
+      return {
+        success: true,
+        data: result,
+        error: undefined
+      };
+    }
+  } catch (error) {
+    console.error(`[geminiService] Error calling proxy for ${endpoint}:`, error);
+    
+    // If proxy fails in development, try direct API as fallback
     if (isDevelopment && hasDirectApiKey) {
       console.log('[geminiService] Proxy failed, trying development fallback');
       const action = endpoint.replace('/', '');
       return await makeDirectApiCall(action, data);
     }
     
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    };
+    throw error;
   }
 };
 
@@ -188,20 +204,20 @@ export const createChatSession = (systemInstructionText?: string): boolean => {
 // Generate text response via proxy
 export const generateText = async (prompt: string, systemInstruction?: string): Promise<string> => {
   try {
-    const response = await makeProxyRequest('/generate', {
+    const response = await makeProxyRequest('generate', {
       prompt,
       systemInstruction: systemInstruction || getBaseSystemInstruction(),
-      model: GEMINI_TEXT_MODEL
+      model: GEMINI_TEXT_MODEL,
     });
 
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to generate text');
+    if (response.success && response.data?.text) {
+      return response.data.text;
+    } else {
+      throw new Error(response.error || 'No text in response');
     }
-
-    return response.data?.text || '';
   } catch (error) {
-    console.error('Error generating text:', error);
-    throw new Error(GENERIC_ERROR_MESSAGE);
+    console.error('[geminiService] generateText error:', error);
+    throw new Error(`Failed to generate text: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
