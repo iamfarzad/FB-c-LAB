@@ -1,21 +1,16 @@
 {
   "version": 2,
-  "builds": [
-    { "src": "package.json", "use": "@vercel/static-build" },
-    { "src": "api/gemini-proxy.ts", "use": "@vercel/node" },
-    { "src": "api/test.ts", "use": "@vercel/node" }
+  "rewrites": [
+    { "source": "/api/gemini-proxy/(.*)", "destination": "/api/gemini-proxy?action=$1" }
   ],
-  "routes": [
-    { 
-      "src": "/api/gemini-proxy/(.*)", 
-      "dest": "/api/gemini-proxy?action=$1",
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization"
-      }
-    },
-    { "src": "/api/test", "dest": "/api/test" },
-    { "src": "/(.*)", "dest": "/$1" }
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+      ]
+    }
   ]
 }
