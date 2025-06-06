@@ -77,6 +77,18 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
               </p>
             </div>
           </div>
+          <button
+            onClick={onClose}
+            className={`touch-target p-1.5 rounded-lg transition-all duration-200 hover-lift ${
+              theme === Theme.DARK 
+                ? 'hover:bg-white/10 text-gray-400 hover:text-white' 
+                : 'hover:bg-black/10 text-gray-600 hover:text-black'
+            } focus-ring`}
+            aria-label="Close side panel (Esc)"
+            title="Close side panel (Esc)"
+          >
+            <X size={16} />
+          </button>
         </div>
 
         {/* Tab Navigation */}

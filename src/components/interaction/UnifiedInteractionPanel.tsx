@@ -90,12 +90,12 @@ export const UnifiedInteractionPanel: React.FC<Omit<UnifiedInteractionPanelProps
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-300"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] transition-opacity duration-300"
         onClick={onClose}
       />
 
       {/* Main Panel */}
-      <div className={`fixed z-50 transition-all duration-300 ease-out ${
+      <div className={`fixed z-[80] transition-all duration-300 ease-out ${
         isFullscreen 
           ? 'inset-0' 
           : 'top-4 right-4 bottom-4 w-full max-w-md sm:max-w-lg lg:max-w-xl'
@@ -120,7 +120,7 @@ export const UnifiedInteractionPanel: React.FC<Omit<UnifiedInteractionPanelProps
                 <h2 className={`font-semibold ${
                   theme === Theme.DARK ? 'text-white' : 'text-black'
                 }`}>
-                  AI Assistant
+                  F.B/c AI
                 </h2>
                 <p className={`text-xs ${
                   theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600'
@@ -255,15 +255,25 @@ export const UnifiedInteractionPanel: React.FC<Omit<UnifiedInteractionPanelProps
       </div>
 
       {/* Side Panel */}
-      <ChatSidePanel
-        isOpen={isSidePanelOpen}
-        theme={theme}
-        onClose={() => setIsSidePanelOpen(false)}
-        chatHistory={chatHistory}
-        onDownloadTranscript={handleDownloadTranscript}
-        summaryData={summaryData}
-        isLoading={isLoadingSummary}
-      />
+      {isSidePanelOpen && (
+        <div className={`fixed z-[85] transition-all duration-300 ease-out ${
+          isFullscreen 
+            ? 'top-0 right-0 bottom-0 w-80' 
+            : 'top-4 right-4 bottom-4 w-80'
+        }`}>
+          <div className="h-full backdrop-blur-sm border shadow-xl rounded-lg overflow-hidden">
+            <ChatSidePanel
+              isOpen={isSidePanelOpen}
+              theme={theme}
+              onClose={() => setIsSidePanelOpen(false)}
+              chatHistory={chatHistory}
+              onDownloadTranscript={handleDownloadTranscript}
+              summaryData={summaryData}
+              isLoading={isLoadingSummary}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Expanded Message Display */}
       {expandedMessageContent && (
