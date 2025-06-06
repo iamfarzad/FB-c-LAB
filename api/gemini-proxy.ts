@@ -2,6 +2,7 @@
 // Serverless proxy for secure Gemini API access
 // Compatible with Vercel deployment
 
+import fetch from 'node-fetch';
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, Part, GenerationConfig as GeminiGenerationConfig } from "@google/generative-ai";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
@@ -62,6 +63,7 @@ interface ProxyRequestBody {
   conversationHistory?: any[];
   audioChunks?: any[];
   text?: string;
+  sourceLanguage?: string;
   targetLanguage?: string;
   name?: string;
   email?: string;
@@ -72,6 +74,46 @@ interface ProxyRequestBody {
 
 // Singleton instance for AI client to reuse connections
 let geminiAIInstance: GoogleGenerativeAI | null = null;
+
+// --- Translation Function ---
+async function translateTextInternal(text: string, targetLanguage: string, sourceLanguage?: string): Promise<string> {
+  const apiKey = process.env.TRANSLATION_API_KEY;
+  if (!apiKey) {
+    console.error('TRANSLATION_API_KEY is not set.');
+    // Fallback: return original text if API key is missing
+    return text;
+  }
+
+  const url = `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`;
+  const body = {
+    q: text,
+    target: targetLanguage,
+    ...(sourceLanguage && { source: sourceLanguage }),
+    format: 'text'
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Translation API error:', errorData);
+      // Fallback: return original text on API error
+      return text;
+    }
+
+    const data = await response.json();
+    return data.data.translations[0].translatedText;
+  } catch (error) {
+    console.error('Error calling Translation API:', error);
+    // Fallback: return original text on network or other errors
+    return text;
+  }
+}
 
 // --- Rate Limiting Functions ---
 function getRateLimitKey(ip: string, type: 'minute' | 'day'): string {
@@ -226,24 +268,40 @@ async function handleStream(body: ProxyRequestBody, res: VercelResponse) {
   const ai = getGeminiAI();
   
   try {
+    let prompt = body.prompt || '';
+    // Translate prompt if sourceLanguage is provided and not 'en'
+    if (body.sourceLanguage && body.sourceLanguage !== 'en') {
+      prompt = await translateTextInternal(prompt, 'en', body.sourceLanguage);
+    }
+
     const model = ai.getGenerativeModel({
       model: body.model || 'gemini-2.0-flash-001',
       systemInstruction: body.systemInstruction,
     });
 
-    const result = await model.generateContentStream(body.prompt || '');
+    const result = await model.generateContentStream(prompt);
     
     // Set headers for Server-Sent Events
     res.setHeader('Content-Type', 'text/plain');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('Access-Control-Allow-Origin', '*');
-    
+
+    let fullResponse = '';
     for await (const chunk of result.stream) {
-      const chunkText = chunk.text();
-      if (chunkText) {
-        res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
-      }
+      fullResponse += chunk.text();
+    }
+
+    // Translate full response if targetLanguage is provided and not 'en'
+    if (body.targetLanguage && body.targetLanguage !== 'en') {
+      fullResponse = await translateTextInternal(fullResponse, body.targetLanguage, 'en');
+    }
+
+    // Stream the potentially translated response by breaking it into smaller chunks
+    const chunkSize = 50; // Characters per chunk
+    for (let i = 0; i < fullResponse.length; i += chunkSize) {
+      const chunkText = fullResponse.substring(i, i + chunkSize);
+      res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
     }
     
     res.write('data: [DONE]\n\n');
@@ -438,8 +496,21 @@ async function handleGenerateChatResponse(body: ProxyRequestBody) {
 
     // sendMessage can also take a GenerationConfig object as a second parameter
     // but it's often cleaner to set it at the chat initiation.
-    const result = await chat.sendMessage(body.prompt || '');
+
+    let userPrompt = body.prompt || '';
+    // Translate user prompt if sourceLanguage is provided and not 'en'
+    if (body.sourceLanguage && body.sourceLanguage !== 'en') {
+      userPrompt = await translateTextInternal(userPrompt, 'en', body.sourceLanguage);
+    }
+
+    const result = await chat.sendMessage(userPrompt);
     const response = await result.response;
+    let aiResponseText = response.text();
+
+    // Translate AI response if targetLanguage is provided and not 'en'
+    if (body.targetLanguage && body.targetLanguage !== 'en') {
+      aiResponseText = await translateTextInternal(aiResponseText, body.targetLanguage, 'en');
+    }
     
     // Extract grounding sources if available
     const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks
@@ -452,7 +523,7 @@ async function handleGenerateChatResponse(body: ProxyRequestBody) {
     return {
       success: true,
       data: {
-        text: response.text(),
+        text: aiResponseText,
         sources
       },
       usage: { inputTokens, outputTokens }

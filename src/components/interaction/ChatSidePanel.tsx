@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, Download, ChevronDown, ChevronRight, Loader2, MessageSquare, Clock, User, Bot } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { X, FileText, Download, ChevronDown, ChevronRight, Loader2, MessageSquare, Clock, User, Bot, Settings as SettingsIcon } from 'lucide-react';
 import { Theme } from '../../../types';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ChatSidePanelProps {
   isOpen: boolean;
@@ -25,8 +27,23 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
   summaryData,
   isLoading = false
 }) => {
+  const { t } = useTranslation();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'summary' | 'analytics' | 'export'>('summary');
+  const [activeTab, setActiveTab] = useState<'summary' | 'analytics' | 'export' | 'settings'>('summary');
+  // Correctly use language, setLanguage, and supportedLanguages from context
+  const { language, setLanguage, supportedLanguages } = useLanguage();
+
+  // Local map for displaying full language names
+  const languageNames: { [key: string]: string } = {
+    en: 'English',
+    es: 'Español',
+    fr: 'Français',
+    de: 'Deutsch',
+    ja: '日本語',
+    ko: '한국어',
+    zh: '中文 (简体)',
+    // Add other supported languages here
+  };
 
   const toggleSection = (sectionId: string) => {
     const newExpanded = new Set(expandedSections);
@@ -48,9 +65,10 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
   const cardBg = theme === Theme.DARK ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200';
 
   const tabs = [
-    { id: 'summary', label: 'Summary', icon: MessageSquare },
-    { id: 'analytics', label: 'Analytics', icon: Clock },
-    { id: 'export', label: 'Export', icon: Download }
+    { id: 'summary', label: t('tab_summary'), icon: MessageSquare }, // Assuming 'tab_summary' etc. are in your JSON
+    { id: 'analytics', label: t('tab_analytics'), icon: Clock },
+    { id: 'export', label: t('tab_export'), icon: Download },
+    { id: 'settings', label: t('chatSidePanel_settingsTab'), icon: SettingsIcon }
   ];
 
   return (
@@ -298,6 +316,46 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
                   Download Transcript
                 </span>
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Settings Tab */}
+        {activeTab === 'settings' && (
+          <div className="p-4 space-y-4">
+            <div className="space-y-2">
+              <h4 className={`text-xs font-semibold uppercase tracking-wider ${mutedTextColor} mb-2`}>
+                Language Settings
+              </h4>
+
+              {/* Single Language Selector */}
+              <div className={`p-3 rounded-lg border ${cardBg} space-y-1`}>
+                <label htmlFor="language-select" className={`block text-xs font-medium ${textColor}`}>
+                  {t('chatSidePanel_languageLabel')}
+                </label>
+                <select
+                  id="language-select"
+                  value={language} // Bind to the single 'language' state from context
+                  onChange={(e) => setLanguage(e.target.value)} // Call 'setLanguage' from context
+                  className={`
+                    w-full p-2 rounded-md border text-xs
+                    ${theme === Theme.DARK
+                      ? 'bg-gray-700 border-gray-600 text-white focus:ring-orange-500 focus:border-orange-500'
+                      : 'bg-white border-gray-300 text-black focus:ring-orange-500 focus:border-orange-500'
+                    }
+                  `}
+                >
+                  {/* Populate options from supportedLanguages (string array from context) */}
+                  {supportedLanguages.map(langCode => (
+                    <option key={langCode} value={langCode}>
+                      {languageNames[langCode] || langCode.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+                <p className={`text-xs ${mutedTextColor} mt-1`}>
+                  Select your preferred language for interaction.
+                </p>
+              </div>
             </div>
           </div>
         )}
