@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { ChatMessage, MessageSender, MessageType, Theme, WebSource, FormType } from '../../types';
 import { AlertTriangle, Image as ImageIcon, Search, CheckCircle, ExternalLink, Info, CalendarDays, Maximize2, Volume2, Download, Send } from 'lucide-react';
 import { CALENDLY_PLACEHOLDER_URL } from '../../constants';
+import { StructuredResponseCard } from './interaction/StructuredResponseCard';
 
 interface ChatMessageBubbleProps {
   message: ChatMessage;
@@ -246,6 +247,37 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({ message, t
       case MessageType.TEXT:
       default:
         const sanitizedText = message.text?.replace(/<audio data-src=".*?"><\/audio>/g, '').trim() || "";
+        
+        // Try to render structured response card first (only for AI messages)
+        if (!isUser && message.text) {
+          const structuredCard = (
+            <StructuredResponseCard 
+              data={message.text} 
+              theme={theme} 
+              onAction={(action, data) => {
+                console.log('Structured card action:', action, data);
+                // Handle actions like "book_consultation", "learn_more", etc.
+              }}
+            />
+          );
+          
+          // If structured card renders (not null), use it
+          if (structuredCard) {
+            return (
+              <div className="flex flex-col space-y-3">
+                {structuredCard}
+                {message.formType === 'name_email_form' && renderNameEmailForm()}
+                {wasSpoken && !message.formType && ( 
+                  <span title="This message was also spoken by the AI" className={`mt-1.5 self-start ${theme === Theme.DARK ? 'text-orange-300/70' : 'text-orange-600/70'}`}>
+                    <Volume2 size={12} />
+                  </span>
+                )}
+              </div>
+            );
+          }
+        }
+        
+        // Fallback to regular text rendering
         const parts = sanitizedText.split(/(\[.*?\]\(.*?\))/g) || [];
         const linkColorAI = theme === Theme.DARK ? 'text-orange-200 hover:text-orange-100' : 'text-orange-600 hover:text-orange-700';
 
