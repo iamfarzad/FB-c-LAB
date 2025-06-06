@@ -109,26 +109,35 @@ export function throttle<T extends (...args: any[]) => void>(
   fn: T,
   limit: number
 ): (...args: Parameters<T>) => void {
-  let inThrottle: boolean;
-  let lastFn: ReturnType<typeof setTimeout>;
-  let lastTime: number;
-  
+  let lastArgs: Parameters<T> | null = null;
+  let lastThis: any = null;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let lastCallTime = 0; // Tracks when the function was last called (either immediately or via timeout)
+
   return function(this: any, ...args: Parameters<T>) {
-    if (!inThrottle) {
-      fn.apply(this, args);
-      lastTime = Date.now();
-      inThrottle = true;
-    } else {
-      clearTimeout(lastFn);
-      lastFn = setTimeout(() => {
-        if (Date.now() - lastTime >= limit) {
-          fn.apply(this, args);
-          lastTime = Date.now();
-        }
-      }, Math.max(limit - (Date.now() - lastTime), 0));
+    const now = Date.now();
+    lastArgs = args;
+    lastThis = this;
+
+    if (timeoutId === null) { // Not currently in a cooldown period (no trailing call scheduled)
+      if (now - lastCallTime >= limit) { // Enough time has passed since the last actual call
+        fn.apply(lastThis, lastArgs);
+        lastCallTime = now;
+      } else { // Not enough time passed, schedule it (trailing call)
+        // Ensure existing timeout is cleared before setting a new one
+        if (timeoutId) clearTimeout(timeoutId); // Should not be needed due to outer if, but safe
+        timeoutId = setTimeout(() => {
+          fn.apply(lastThis, lastArgs!); // Apply with the last arguments received
+          lastCallTime = Date.now();
+          timeoutId = null; // Clear timeoutId after execution
+        }, limit - (now - lastCallTime)); // Time remaining until limit is met
+      }
     }
+    // If timeoutId is not null, it means a call is already scheduled.
+    // The latest args & this will be picked up by that scheduled call because lastArgs and lastThis are updated above.
   };
 }
+
 
 /**
  * Generates a unique ID
