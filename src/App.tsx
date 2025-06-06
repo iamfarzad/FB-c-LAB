@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Theme, ChatMessage, MessageSender, MessageType } from '../types';
 
+// Import i18n configuration
+import './i18n';
+
+// Import language context
+import { LanguageProvider } from './contexts/LanguageContext';
+
 // Import the actual Header and Footer components
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -157,8 +163,9 @@ const App: React.FC = () => {
   };
 
   return (
-    <BrowserRouter>
-      <div className={`min-h-screen ${theme === Theme.DARK ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
+    <LanguageProvider>
+      <BrowserRouter>
+        <div className={`min-h-screen ${theme === Theme.DARK ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
         <Header 
           theme={theme} 
           onToggleTheme={toggleTheme} 
@@ -189,8 +196,6 @@ const App: React.FC = () => {
           onSendMessage={handleSendMessage}
           onClearChat={handleClearChat}
           isAiThinking={isAiThinking}
-          onLiveUserSpeechFinal={handleLiveUserSpeechFinal}
-          onLiveAiSpeechText={handleLiveAiSpeechText}
           onFormSubmit={handleFormSubmit}
         />
         
@@ -201,8 +206,9 @@ const App: React.FC = () => {
             Farzad AI online
           </span>
         </div>
-      </div>
-    </BrowserRouter>
+              </div>
+      </BrowserRouter>
+    </LanguageProvider>
   );
 };
 
