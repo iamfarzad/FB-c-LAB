@@ -250,22 +250,21 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({ message, t
         
         // Try to render structured response card first (only for AI messages)
         if (!isUser && message.text) {
-          const structuredCard = (
-            <StructuredResponseCard 
-              data={message.text} 
-              theme={theme} 
-              onAction={(action, data) => {
-                console.log('Structured card action:', action, data);
-                // Handle actions like "book_consultation", "learn_more", etc.
-              }}
-            />
-          );
+          // Check if the message contains structured JSON
+          const hasStructuredData = message.text.includes('```json') || 
+            (typeof message.text === 'string' && message.text.trim().startsWith('{') && message.text.trim().endsWith('}'));
           
-          // If structured card renders (not null), use it
-          if (structuredCard) {
+          if (hasStructuredData) {
             return (
               <div className="flex flex-col space-y-3">
-                {structuredCard}
+                <StructuredResponseCard 
+                  data={message.text} 
+                  theme={theme} 
+                  onAction={(action, data) => {
+                    console.log('Structured card action:', action, data);
+                    // Handle actions like "book_consultation", "learn_more", etc.
+                  }}
+                />
                 {message.formType === 'name_email_form' && renderNameEmailForm()}
                 {wasSpoken && !message.formType && ( 
                   <span title="This message was also spoken by the AI" className={`mt-1.5 self-start ${theme === Theme.DARK ? 'text-orange-300/70' : 'text-orange-600/70'}`}>
