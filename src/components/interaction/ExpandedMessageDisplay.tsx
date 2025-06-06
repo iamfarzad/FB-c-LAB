@@ -74,12 +74,12 @@ export const ExpandedMessageDisplay: React.FC<ExpandedMessageDisplayProps> = ({
   // Handle copy to clipboard
   const handleCopy = async () => {
     try {
-      if (message.type === MessageType.IMAGE && message.content) {
+      if (message.type === MessageType.IMAGE && message.imageUrl) {
         // For images, copy the URL
-        await navigator.clipboard.writeText(message.content);
+        await navigator.clipboard.writeText(message.imageUrl);
       } else {
         // For text, copy the content
-        await navigator.clipboard.writeText(message.content || '');
+        await navigator.clipboard.writeText(message.text || '');
       }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -94,8 +94,8 @@ export const ExpandedMessageDisplay: React.FC<ExpandedMessageDisplayProps> = ({
       try {
         await navigator.share({
           title: 'Shared Message',
-          text: message.content || '',
-          url: message.type === MessageType.IMAGE ? message.content : undefined
+          text: message.text || '',
+          url: message.type === MessageType.IMAGE ? message.imageUrl : undefined
         });
       } catch (err) {
         console.error('Failed to share:', err);
@@ -164,7 +164,7 @@ export const ExpandedMessageDisplay: React.FC<ExpandedMessageDisplayProps> = ({
   return (
     <div 
       className={`
-        fixed inset-0 z-50 flex items-center justify-center p-4
+        fixed inset-0 z-[90] flex items-center justify-center p-4
         ${overlayBg} ${isFullscreen ? 'p-0' : 'p-4 sm:p-6 lg:p-8'}
         transition-all duration-300 ease-out
       `}
@@ -315,10 +315,10 @@ export const ExpandedMessageDisplay: React.FC<ExpandedMessageDisplayProps> = ({
                 </div>
               )}
 
-              {message.content && (
+              {message.imageUrl && (
                 <img
                   ref={imageRef}
-                  src={message.content}
+                  src={message.imageUrl}
                   alt="Expanded view"
                   className={`
                     max-w-full max-h-full object-contain transition-all duration-300 ease-out
@@ -348,7 +348,7 @@ export const ExpandedMessageDisplay: React.FC<ExpandedMessageDisplayProps> = ({
                 ${textColor}
               `}>
                 <div className="whitespace-pre-wrap leading-relaxed">
-                  {message.content}
+                  {message.text}
                 </div>
               </div>
             </div>
