@@ -28,6 +28,8 @@ export const ChatMessagesArea: React.FC<ChatMessagesAreaProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [hasNewMessages, setHasNewMessages] = useState(false);
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Theme-based styling
   const containerBg = theme === Theme.DARK 
@@ -40,10 +42,54 @@ export const ChatMessagesArea: React.FC<ChatMessagesAreaProps> = ({
     ? 'bg-white/10 hover:bg-white/20' 
     : 'bg-black/10 hover:bg-black/20';
 
-  // Scroll handling
+  // Improved scroll to bottom function
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
-    setHasNewMessages(false);
+    if (messagesEndRef.current && containerRef.current) {
+      // Use scrollTop instead of scrollIntoView for better control
+      const container = containerRef.current;
+      if (behavior === 'auto') {
+        container.scrollTop = container.scrollHeight;
+      } else {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+      setHasNewMessages(false);
+      setShowScrollButton(false);
+    }
+  };
+
+  // Check if user is near bottom
+  const isNearBottom = () => {
+    const container = containerRef.current;
+    if (!container) return false;
+    
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const threshold = 100; // pixels from bottom
+    return scrollHeight - scrollTop - clientHeight < threshold;
+  };
+
+  // Handle scroll events
+  const handleScroll = () => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const nearBottom = isNearBottom();
+    setShowScrollButton(!nearBottom);
+    
+    if (nearBottom) {
+      setHasNewMessages(false);
+    }
+
+    // Detect user scrolling
+    setIsUserScrolling(true);
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      setIsUserScrolling(false);
+    }, 150);
   };
 
   // Monitor scroll position
@@ -51,35 +97,36 @@ export const ChatMessagesArea: React.FC<ChatMessagesAreaProps> = ({
     const container = containerRef.current;
     if (!container) return;
 
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
-      setShowScrollButton(!isNearBottom);
-      if (isNearBottom) setHasNewMessages(false);
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
     };
-
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Scroll to bottom on new messages
+  // Auto-scroll on new messages (only if user is near bottom)
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    if (messages.length === 0) return;
 
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+    // Small delay to ensure DOM is updated
+    const timeoutId = setTimeout(() => {
+      if (isNearBottom() || !isUserScrolling) {
+        scrollToBottom('smooth');
+      } else {
+        setHasNewMessages(true);
+      }
+    }, 50);
 
-    if (isNearBottom) {
-      scrollToBottom('smooth');
-    } else {
-      setHasNewMessages(true);
+    return () => clearTimeout(timeoutId);
+  }, [messages.length, isAiThinking]);
+
+  // Initial scroll to bottom
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom('auto');
     }
-  }, [messages]);
-
-  // Initial scroll
-  useEffect(() => {
-    scrollToBottom('auto');
   }, []);
 
   const quickReplies = [
@@ -95,11 +142,17 @@ export const ChatMessagesArea: React.FC<ChatMessagesAreaProps> = ({
       <div
         ref={containerRef}
         className={`
-          flex-1 overflow-y-auto
+          flex-1 overflow-y-auto overflow-x-hidden
+          chat-scroll-container
           ${containerBg} backdrop-blur-xl
           ${isPanelFullscreen ? '' : 'rounded-t-xl'}
           transition-all duration-200
+          scroll-smooth
         `}
+        style={{
+          scrollBehavior: 'smooth',
+          overscrollBehavior: 'contain'
+        }}
       >
         {messages.length === 0 ? (
           // Empty State
@@ -139,14 +192,11 @@ export const ChatMessagesArea: React.FC<ChatMessagesAreaProps> = ({
           </div>
         ) : (
           // Messages List
-          <div className="flex flex-col min-h-full p-4 sm:p-6">
+          <div className="flex flex-col p-4 sm:p-6 space-y-6">
             {messages.map((message, index) => (
               <div
                 key={message.id}
-                className={`
-                  flex flex-col max-w-3xl mx-auto w-full
-                  ${index > 0 ? 'mt-6' : ''}
-                `}
+                className="flex flex-col max-w-3xl mx-auto w-full"
               >
                 <ChatMessageBubble
                   message={message}
@@ -160,7 +210,7 @@ export const ChatMessagesArea: React.FC<ChatMessagesAreaProps> = ({
             
             {/* Typing Indicator */}
             {isAiThinking && (
-              <div className="flex items-center space-x-2 mt-6 max-w-3xl mx-auto w-full">
+              <div className="flex items-center space-x-2 max-w-3xl mx-auto w-full">
                 <div className={`
                   flex space-x-1 px-4 py-3 rounded-2xl
                   ${theme === Theme.DARK ? 'bg-white/5' : 'bg-black/5'}
@@ -173,7 +223,7 @@ export const ChatMessagesArea: React.FC<ChatMessagesAreaProps> = ({
             )}
 
             {/* Messages End Marker */}
-            <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} className="h-1" />
           </div>
         )}
       </div>
@@ -181,18 +231,19 @@ export const ChatMessagesArea: React.FC<ChatMessagesAreaProps> = ({
       {/* Scroll to Bottom Button */}
       {showScrollButton && (
         <button
-          onClick={() => scrollToBottom()}
+          onClick={() => scrollToBottom('smooth')}
           className={`
-            absolute bottom-4 right-4 p-2 rounded-full shadow-lg
-            transition-all duration-200 transform
+            absolute bottom-4 right-4 p-3 rounded-full shadow-lg
+            transition-all duration-200 transform hover:scale-105
             ${scrollButtonBg} ${textColor}
-            ${hasNewMessages ? 'animate-bounce' : ''}
+            ${hasNewMessages ? 'animate-pulse' : ''}
+            z-10
           `}
           title="Scroll to bottom"
         >
           <ArrowDown size={20} className={hasNewMessages ? 'text-orange-500' : ''} />
           {hasNewMessages && (
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full" />
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full animate-ping" />
           )}
         </button>
       )}
