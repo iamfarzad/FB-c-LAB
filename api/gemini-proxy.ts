@@ -2,7 +2,7 @@
 // Serverless proxy for secure Gemini API access
 // Compatible with Vercel deployment
 
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, Part } from "@google/generative-ai";
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, Part, GenerationConfig as GeminiGenerationConfig } from "@google/generative-ai";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Rate limiting storage (in production, use Redis or database)
@@ -56,6 +56,7 @@ interface ProxyRequestBody {
   prompt?: string;
   systemInstruction?: string;
   model?: string;
+  generationConfig?: GeminiGenerationConfig; // Added to allow client to pass generation config
   image?: string;
   mimeType?: string;
   conversationHistory?: any[];
@@ -425,15 +426,19 @@ async function handleGenerateChatResponse(body: ProxyRequestBody) {
         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-      ]
+      ],
+      // generationConfig can be set at model initialization or per request
     });
 
     // Create chat with history if provided
     const chat = model.startChat({
-      history: body.conversationHistory || []
+      history: body.conversationHistory || [],
+      generationConfig: body.generationConfig // Pass generationConfig here
     });
 
-    const result = await chat.sendMessage(body.prompt);
+    // sendMessage can also take a GenerationConfig object as a second parameter
+    // but it's often cleaner to set it at the chat initiation.
+    const result = await chat.sendMessage(body.prompt || '');
     const response = await result.response;
     
     // Extract grounding sources if available
@@ -463,27 +468,64 @@ async function handleGenerateChatResponse(body: ProxyRequestBody) {
 
 async function handleGenerateImage(body: ProxyRequestBody) {
   try {
-    if (!body.prompt || !body.model) {
-      return { success: false, error: 'Missing prompt or model for image generation' };
+    if (!body.prompt) {
+      return { success: false, error: 'Missing prompt for image generation' };
     }
 
     const ai = getGeminiAI();
-    const model = ai.getGenerativeModel({ model: body.model });
+    // Use gemini-2.0-flash-preview-image-generation as per documentation for Gemini native image gen
+    // The 'model' property in the body can be used to specify Imagen3 later if needed,
+    // but we'll default to Gemini's own image generation model.
+    const imageModel = body.model || 'gemini-2.0-flash-preview-image-generation';
 
-    await model.generateContent([{
-      text: body.prompt
-    }]);
+    const model = ai.getGenerativeModel({
+      model: imageModel,
+      // Safety settings can be added here if needed, similar to generateChatResponse
+    });
 
-    // Note: This is a placeholder - actual image generation would use a different API
-    // For now, return a success response indicating the request was processed
+    const result = await model.generateContent({
+      contents: [{ parts: [{ text: body.prompt }] }],
+      generationConfig: {
+        // As per docs, Gemini native image gen needs responseModalities
+        // @ts-ignore - responseModalities might not be in the default config type but is needed for this model
+        responseModalities: ["TEXT", "IMAGE"],
+      }
+    });
+
+    const response = await result.response;
+    const candidates = response.candidates;
+
+    if (!candidates || candidates.length === 0) {
+      return { success: false, error: 'No content generated' };
+    }
+
+    const generatedTextParts: string[] = [];
+    const generatedImages: { base64Data: string; mimeType: string }[] = [];
+
+    for (const candidate of candidates) {
+      if (candidate.content && candidate.content.parts) {
+        for (const part of candidate.content.parts) {
+          if (part.text) {
+            generatedTextParts.push(part.text);
+          } else if (part.inlineData && part.inlineData.data && part.inlineData.mimeType) {
+            generatedImages.push({
+              base64Data: part.inlineData.data,
+              mimeType: part.inlineData.mimeType,
+            });
+          }
+        }
+      }
+    }
+
+    // TODO: Add token tracking and cost estimation for image generation models
+    // This will require knowing the pricing structure for image generation.
+
     return {
       success: true,
       data: {
-        generatedImages: [{
-          url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzMzNzNkYyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+SW1hZ2UgUGxhY2Vob2xkZXI8L3RleHQ+PC9zdmc+',
-          mimeType: 'image/svg+xml'
-        }]
-      }
+        text: generatedTextParts.join('\n'), // Join if multiple text parts
+        images: generatedImages, // Array of images
+      },
     };
   } catch (error: any) {
     console.error('Image generation error:', error);
@@ -495,29 +537,102 @@ async function handleGenerateImage(body: ProxyRequestBody) {
 }
 
 async function handleSearchWeb(body: ProxyRequestBody) {
+  const ai = getGeminiAI();
+  const modelName = body.model || 'gemini-2.0-flash-exp'; // Or another model that supports function calling
+
+  // 1. Define the web_search tool (function declaration)
+  const webSearchTool = {
+    functionDeclarations: [
+      {
+        name: "web_search",
+        description: "Searches the web for information based on a query. Returns a list of search results with titles, links, and snippets.",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            query: {
+              type: "STRING",
+              description: "The search query to find information on the web."
+            }
+          },
+          required: ["query"]
+        }
+      }
+    ]
+  };
+
   try {
-    const genAI = getGeminiAI();
-    const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.0-flash-exp',
-      safetySettings: [
+    const generativeModel = ai.getGenerativeModel({
+      model: modelName,
+      tools: [webSearchTool],
+      safetySettings: [ // Consider reusing safety settings from other handlers
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        // Add other relevant safety settings
       ],
+      // toolConfig: { functionCallingConfig: { mode: "AUTO" } } // Default is AUTO
     });
 
-    const searchPrompt = `Search the web for: ${body.prompt}. Provide comprehensive results with sources.`;
-    
-    const result = await model.generateContent(searchPrompt);
-    const response = await result.response;
-    const text = response.text();
+    const chat = generativeModel.startChat({
+      history: body.conversationHistory || [], // Allow for conversational search
+    });
 
-    return {
-      success: true,
-      data: { text }
-    };
-  } catch (error) {
+    // 2. Send prompt and tool to Gemini
+    const initialResult = await chat.sendMessage(body.prompt || '');
+    const initialResponse = initialResult.response;
+    
+    const functionCalls = initialResponse.functionCalls();
+
+    if (functionCalls && functionCalls.length > 0) {
+      const call = functionCalls[0]; // Assuming one function call for now
+      if (call.name === 'web_search') {
+        const searchQuery = call.args.query;
+        console.log(`[Proxy] Web Search: Gemini suggested search query: "${searchQuery}"`);
+
+        // 3. Simulate External Search API
+        // In a real scenario, you would call a search API (e.g., Google Custom Search API, Bing Search API, etc.)
+        // For this subtask, we simulate the results.
+        let simulatedSearchResults = [
+          { title: `Simulated Result 1 for "${searchQuery}"`, link: `https://example.com/search?q=${encodeURIComponent(searchQuery + " 1")}`, snippet: `This is a simulated snippet for the query: ${searchQuery}. Result 1.` },
+          { title: `Simulated Result 2 for "${searchQuery}"`, link: `https://example.com/search?q=${encodeURIComponent(searchQuery + " 2")}`, snippet: `Another simulated snippet for your query: ${searchQuery}. Result 2.` }
+        ];
+        if (searchQuery.toLowerCase().includes("weather")) {
+            simulatedSearchResults.push({ title: "AccuWeather", link: "https://www.accuweather.com", snippet: "Your source for accurate weather forecasts."});
+        }
+         if (searchQuery.toLowerCase().includes("documentation")) {
+            simulatedSearchResults.push({ title: "MDN Web Docs", link: "https://developer.mozilla.org/", snippet: "Resources for developers, by developers."});
+        }
+
+
+        // 4. Send search results back to Gemini
+        const searchResponseResult = await chat.sendMessage([
+          {
+            functionResponse: {
+              name: 'web_search',
+              response: {
+                // The content here should be what your function/tool actually returns
+                results: simulatedSearchResults
+              }
+            }
+          }
+        ]);
+
+        const finalResponse = await searchResponseResult.response;
+        const finalText = finalResponse.text();
+        // TODO: Add token tracking for both calls
+        return { success: true, data: { text: finalText, sources: simulatedSearchResults } };
+      } else {
+        // Model suggested a different function or no function, handle as direct answer
+        const text = initialResponse.text();
+        return { success: true, data: { text } };
+      }
+    } else {
+      // No function call, return the direct response
+      const text = initialResponse.text();
+      // TODO: Add token tracking
+      return { success: true, data: { text } };
+    }
+
+  } catch (error: any) {
     console.error('[Proxy] Web search error:', error);
     return {
       success: false,
@@ -541,10 +656,14 @@ async function handleGenerateTextOnly(body: ProxyRequestBody) {
         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-      ]
+      ],
+      // generationConfig can be set at model initialization or per request
     });
 
-    const result = await model.generateContent(body.prompt);
+    const result = await model.generateContent({
+      contents: [{ parts: [{text: body.prompt || ''}]}],
+      generationConfig: body.generationConfig // Pass generationConfig here
+    });
     const response = await result.response;
 
     const inputTokens = estimateTokens(body.prompt);

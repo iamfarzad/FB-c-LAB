@@ -172,6 +172,7 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
     { to: '/services', text: 'Services' },
     { to: '/workshop', text: 'Workshop' },
     { to: '/about', text: 'About' },
+    { to: '/generative-tools', text: 'AI Tools' }, // Added new link here
     { to: '/contact', text: 'Contact Us' },
   ];
 

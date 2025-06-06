@@ -12,6 +12,16 @@ export interface NavigationItem {
   children?: NavigationItem[];
 }
 
+// Example of how items are structured, will be passed from a parent component (e.g. Header.tsx or Layout.tsx)
+// const navigationItems: NavigationItem[] = [
+//   { name: 'Home', href: '/' },
+//   { name: 'About', href: '/about' },
+//   { name: 'Services', href: '/services' },
+//   { name: 'Generative Tools', href: '/GenerativeToolsPage' }, // Conventionally page URLs are lowercase
+//   { name: 'Contact', href: '/contact' },
+// ];
+
+
 export interface NavigationProps {
   theme: Theme;
   className?: string;
@@ -21,7 +31,7 @@ export interface NavigationProps {
 
 export function Navigation({
   className = '',
-  items,
+  items, // This will be passed from the parent component (e.g., Header or Layout)
   onNavigate,
 }: Omit<NavigationProps, 'theme'>) {
   const router = useRouter();
