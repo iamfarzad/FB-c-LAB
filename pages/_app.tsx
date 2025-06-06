@@ -1,9 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { ThemeProvider } from '../src/contexts/ThemeContext';
+import { LanguageProvider } from '../src/contexts/LanguageContext';
 import Layout from '../src/components/Layout';
 import type { AppProps } from 'next/app';
 import { useRouter } from 'next/router';
-import '../styles/globals.css';
+import '../src/index.css'; // Adjusted path
+import '../src/i18n'; // Import i18next configuration
 
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -22,9 +24,13 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   return (
     <ThemeProvider>
-      <Layout>
-        <Component {...pageProps} />
-      </Layout>
+      <LanguageProvider>
+        <Suspense fallback="Loading...">
+          <Layout>
+            <Component {...pageProps} />
+          </Layout>
+        </Suspense>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }
