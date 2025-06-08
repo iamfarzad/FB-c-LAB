@@ -2,7 +2,7 @@ import { WebSource, ChatMessage } from '../types';
 import { 
     GEMINI_TEXT_MODEL, GEMINI_IMAGE_MODEL, GENERIC_ERROR_MESSAGE,
     FBC_BRAND_NAME, AI_ASSISTANT_NAME, SIMULATED_KNOWLEDGE_BASE
-} from '../constants';
+} from '@/constants';
 
 interface ProxyResponse {
   success: boolean;

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+// --- THIS IS THE FIX: Import the correct, separate package ---
 import tailwindcss from '@tailwindcss/postcss'
 import autoprefixer from 'autoprefixer'
 
@@ -11,6 +12,7 @@ export default defineConfig({
   ],
   css: {
     postcss: {
+      // --- THIS IS THE FIX: Use the imported plugins directly ---
       plugins: [
         tailwindcss,
         autoprefixer,
@@ -18,13 +20,11 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      '~': path.resolve(__dirname, './')  // Point to project root
-    },
-  },
-  define: {
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
+    // This alias configuration is correct and robust
+    alias: [
+      { find: '@', replacement: path.resolve(__dirname, 'src') },
+      { find: '~', replacement: path.resolve(__dirname, '.') },
+    ],
   },
   server: {
     port: 5173,
@@ -33,6 +33,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    // This manualChunks configuration is correct
     rollupOptions: {
       output: {
         manualChunks: {
@@ -41,16 +42,16 @@ export default defineConfig({
           'vendor-three': ['three'],
           'vendor-ai': ['@google/genai'],
           'components-interaction': [
-            './src/components/interaction/UnifiedInteractionPanel',
-            './src/components/interaction/ChatSidePanel',
-            './src/components/interaction/ExpandedMessageDisplay'
+            path.resolve(__dirname, 'src/components/interaction/UnifiedInteractionPanel.tsx'),
+            path.resolve(__dirname, 'src/components/interaction/ChatSidePanel.tsx'),
+            path.resolve(__dirname, 'src/components/interaction/ExpandedMessageDisplay.tsx'),
           ],
           'components-pages': [
-            './pages/HomePage',
-            './pages/AboutPage', 
-            './pages/ServicesPage',
-            './pages/WorkshopPage',
-            './pages/ContactPage'
+            path.resolve(__dirname, 'src/pages/HomePage.tsx'),
+            path.resolve(__dirname, 'src/pages/AboutPage.tsx'),
+            path.resolve(__dirname, 'src/pages/ServicesPage.tsx'),
+            path.resolve(__dirname, 'src/pages/WorkshopPage.tsx'),
+            path.resolve(__dirname, 'src/pages/ContactPage.tsx'),
           ]
         }
       }

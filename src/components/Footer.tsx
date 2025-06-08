@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Github, Twitter, Linkedin, MessageCircle } from 'lucide-react';
-import { Theme } from '../../types';
-import { FBC_BRAND_NAME } from '../../constants';
+import { Theme } from '@/types';
+import { FBC_BRAND_NAME } from '@/constants';
 import { Container } from './layout/Container';
 
 interface FooterProps {

@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { generateImage, GeneratedImageData } from '../../../services/geminiService';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
+import { generateImage, GeneratedImageData } from '@/services/geminiService';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '../ui/Button';
 import { Textarea } from '../ui/Textarea';
 import { Alert, AlertDescription } from '../ui/Alert';
 import { Loading } from '../ui/Loading';
 import { Badge } from '../ui/Badge';
 import { Sparkles, Image as ImageIcon, Download } from 'lucide-react';
-import { useTheme, Theme } from '../../contexts/ThemeContext';
+import { useTheme, Theme } from '@/contexts/ThemeContext';
 
 interface DisplayImage {
   src: string;

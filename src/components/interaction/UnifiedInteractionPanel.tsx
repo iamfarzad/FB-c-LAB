@@ -7,7 +7,7 @@ import { InteractionInputBar } from './InteractionInputBar';
 import { ChatSidePanel } from './ChatSidePanel';
 import { ExpandedMessageDisplay } from './ExpandedMessageDisplay';
 import { FullScreenVoiceOverlay } from '../liveaudio/FullScreenVoiceOverlay';
-import { generateClientSummary } from '../../../services/geminiService'; 
+import { generateClientSummary } from '@/services/geminiService';
 
 interface UnifiedInteractionPanelProps {
   isOpen: boolean;

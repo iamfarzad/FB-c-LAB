@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Theme } from '@/types';
 import { AboutPageHero } from '@/components/about/AboutPageHero';
 import { UnifiedAboutContent } from '@/components/about/UnifiedAboutContent';
@@ -10,24 +10,17 @@ interface AboutPageProps {
   onToggleChat: (message?: string) => void;
 }
 
-export const AboutPage: React.FC<AboutPageProps> = ({ theme, onToggleChat }) => {
+export function AboutPage({ theme, onToggleChat }: AboutPageProps) {
   const [isFullStoryModalOpen, setIsFullStoryModalOpen] = useState(false);
 
   const openFullStoryModal = () => setIsFullStoryModalOpen(true);
   const closeFullStoryModal = () => setIsFullStoryModalOpen(false);
 
   return (
-    <div className={`min-h-screen relative transition-colors duration-300 ${
-      theme === Theme.DARK ? 'text-white' : 'text-black'
-    }`}>
-      {/* Content */}
-      <div className="relative z-10">
-        <AboutPageHero theme={theme} />
-        <UnifiedAboutContent theme={theme} onReadFullStory={openFullStoryModal} />
-        <AboutFinalCTASection theme={theme} onToggleChat={() => onToggleChat()} />
-      </div>
-
-      {/* Full Story Modal */}
+    <div className="bg-background text-foreground">
+      <AboutPageHero theme={theme} />
+      <UnifiedAboutContent theme={theme} onReadFullStory={openFullStoryModal} />
+      <AboutFinalCTASection theme={theme} onToggleChat={() => onToggleChat()} />
       <FullStoryModal
         isOpen={isFullStoryModalOpen}
         onClose={closeFullStoryModal}
@@ -35,4 +28,4 @@ export const AboutPage: React.FC<AboutPageProps> = ({ theme, onToggleChat }) => 
       />
     </div>
   );
-};
+} 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ChatMessage, MessageSender, MessageType, Theme } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -26,13 +26,14 @@ import { ContactPage } from '@/pages/ContactPage';
 import { UnifiedInteractionPanel } from '@/components/interaction/UnifiedInteractionPanel';
 import { AppBackground } from '@/components/AppBackground';
 
-// --- Statically import all AI services ---
+// --- THIS IS THE FIX: Correctly import from inside src using the '@/' alias ---
+import { INITIAL_AI_CHAT_MESSAGE } from '@/constants';
 import {
   generateText,
   analyzeImage,
   generateImage,
   performGroundedSearch,
-} from '../services/geminiService';
+} from '@/services/geminiService';
 
 // Main App component styling
 import '@/index.css';
@@ -42,10 +43,6 @@ const AppContent: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isAiThinking, setIsAiThinking] = useState(false);
-
-  useEffect(() => {
-    // This could be used to load chat history from localStorage
-  }, []);
 
   const toggleTheme = () => {
     const newTheme = resolvedTheme === Theme.DARK ? Theme.LIGHT : Theme.DARK;
@@ -60,7 +57,6 @@ const AppContent: React.FC = () => {
     setIsChatOpen(true);
     
     if (chatHistory.length === 0 && !message) {
-      const { INITIAL_AI_CHAT_MESSAGE } = require('../constants');
       const aiGreeting: ChatMessage = {
         id: uuidv4(),
         sender: MessageSender.AI,
@@ -102,7 +98,6 @@ const AppContent: React.FC = () => {
       let aiResponse: Partial<ChatMessage> = {};
 
       if (imageBase64 && imageMimeType) {
-        // Convert base64 back to a File object for the service
         const byteCharacters = atob(imageBase64);
         const byteNumbers = new Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
@@ -196,7 +191,7 @@ const AppContent: React.FC = () => {
   );
 };
 
-const App: React.FC = () => {
+export default function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
@@ -204,6 +199,4 @@ const App: React.FC = () => {
       </LanguageProvider>
     </ThemeProvider>
   );
-};
-
-export default App;
+}

@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { performGroundedSearch, GroundedSearchResult } from '../../../services/geminiService';
+import { performGroundedSearch, GroundedSearchResult } from '@/services/geminiService';
 import { WebSource } from '@/types';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
-import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { Badge } from '../ui/Badge';
-import { Alert, AlertDescription } from '../ui/Alert';
-import { Loading } from '../ui/Loading';
+import { Alert, AlertDescription } from '@/components/ui/Alert';
+import { Loading } from '@/components/ui/Loading';
 import { Search, ExternalLink, Globe } from 'lucide-react';
-import { useTheme, Theme } from '../../contexts/ThemeContext';
+import { useTheme, Theme } from '@/contexts/ThemeContext';
 
 const GroundedSearchUI: React.FC = () => {
   const { theme } = useTheme();

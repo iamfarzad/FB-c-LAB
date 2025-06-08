@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { generateDocumentation } from '../../../services/geminiService';
+import { generateDocumentation } from '@/services/geminiService';
 type DocumentationResult = Awaited<ReturnType<typeof generateDocumentation>>;
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
-import { Button } from '../ui/Button';
-import { Textarea } from '../ui/Textarea';
-import { Alert, AlertDescription } from '../ui/Alert';
-import { Loading } from '../ui/Loading';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Textarea } from '@/components/ui/Textarea';
+import { Alert, AlertDescription } from '@/components/ui/Alert';
+import { Loading } from '@/components/ui/Loading';
 import { FileText, Sparkles } from 'lucide-react';
-import { useTheme, Theme } from '../../contexts/ThemeContext';
+import { useTheme, Theme } from '@/contexts/ThemeContext';
 
 const DocumentationGeneratorUI: React.FC = () => {
   const { theme } = useTheme();

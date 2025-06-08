@@ -64,7 +64,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
 
       // Use direct translation service (for development or fallback)
       console.log('Using direct translation service...');
-      const { translateText } = await import('../../services/geminiService');
+      const { translateText } = await import("@/services/geminiService");
       const result = await translateText(content, targetLanguage, sourceLanguage);
       return result.translatedText;
 
