@@ -1,0 +1,86 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Browser Tools MCP Commands Reference
+
+## Quick Command Reference
+
+Use these MCP commands for debugging and error monitoring:
+
+### Error Detection Commands
+
+```
+mcp_github_comAgentDeskAIbrowser-tools-mcp_getConsoleErrors
+```
+- **Purpose**: Capture JavaScript console errors
+- **When to use**: Always check first when debugging issues
+- **Critical for**: Syntax errors, runtime exceptions, module loading failures
+
+```
+mcp_github_comAgentDeskAIbrowser-tools-mcp_getConsoleLogs  
+```
+- **Purpose**: Get all console logs (info, warn, log, debug)
+- **When to use**: For detailed debugging information
+- **Useful for**: Tracing application flow, API responses
+
+```
+mcp_github_comAgentDeskAIbrowser-tools-mcp_getNetworkErrors
+```
+- **Purpose**: Capture failed network requests
+- **When to use**: When API calls or resource loading fails
+- **Critical for**: Gemini API issues, CDN loading problems
+
+```
+mcp_github_comAgentDeskAIbrowser-tools-mcp_getNetworkLogs
+```
+- **Purpose**: Get all network activity logs
+- **When to use**: For comprehensive network debugging
+- **Useful for**: Performance analysis, request/response inspection
+
+### Visual Debugging
+
+```
+mcp_github_comAgentDeskAIbrowser-tools-mcp_takeScreenshot
+```
+- **Purpose**: Capture current browser state
+- **When to use**: To document issues or verify fixes
+- **Useful for**: UI debugging, visual regression testing
+
+### Maintenance Commands
+
+```
+mcp_github_comAgentDeskAIbrowser-tools-mcp_wipeLogs
+```
+- **Purpose**: Clear all stored logs from memory
+- **When to use**: To start fresh debugging session
+- **Note**: Use before major testing cycles
+
+### Audit Commands
+
+```
+mcp_github_comAgentDeskAIbrowser-tools-mcp_runSEOAudit
+mcp_github_comAgentDeskAIbrowser-tools-mcp_runNextJSAudit
+mcp_github_comAgentDeskAIbrowser-tools-mcp_runAuditMode
+mcp_github_comAgentDeskAIbrowser-tools-mcp_runDebuggerMode
+```
+- **Purpose**: Comprehensive application auditing
+- **When to use**: For performance optimization and best practices
+
+## Command Usage Pattern
+
+1. **Start Session**: `wipeLogs` to clear previous data
+2. **Check Errors**: `getConsoleErrors` for immediate issues  
+3. **Deep Dive**: `getConsoleLogs` and `getNetworkLogs` for details
+4. **Document**: `takeScreenshot` to capture state
+5. **Audit**: Run audit commands for optimization
+
+## Integration with Development
+
+- **Before code changes**: Check baseline errors
+- **After changes**: Verify no new errors introduced
+- **During debugging**: Use logs to trace issues
+- **Before deployment**: Run full audit suite
+
+**Always run error checks as the first step in any debugging workflow.**

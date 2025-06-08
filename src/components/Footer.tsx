@@ -1,7 +1,8 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
+import { Github, Twitter, Linkedin, MessageCircle } from 'lucide-react';
 import { Theme } from '../../types';
 import { FBC_BRAND_NAME } from '../../constants';
+import { Container } from './layout/Container';
 
 interface FooterProps {
   theme?: Theme;
@@ -47,25 +48,34 @@ const footerLinks = [
 ];
 
 const socialLinks = [
-  { name: 'GitHub', href: 'https://github.com', icon: 'github' },
-  { name: 'Twitter', href: 'https://twitter.com', icon: 'twitter' },
-  { name: 'LinkedIn', href: 'https://linkedin.com', icon: 'linkedin' },
-  { name: 'Discord', href: 'https://discord.com', icon: 'message-circle' },
+  { name: 'GitHub', href: 'https://github.com', icon: Github },
+  { name: 'Twitter', href: 'https://twitter.com', icon: Twitter },
+  { name: 'LinkedIn', href: 'https://linkedin.com', icon: Linkedin },
+  { name: 'Discord', href: 'https://discord.com', icon: MessageCircle },
 ];
 
 export function Footer({ theme = Theme.DARK }: FooterProps) {
   const currentYear = new Date().getFullYear();
-
-  const footerBg = theme === Theme.DARK 
-    ? 'bg-gray-900 border-gray-800 text-white' 
-    : 'bg-white border-gray-200 text-gray-900';
-  
   const textMuted = theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600';
   const textHover = theme === Theme.DARK ? 'hover:text-white' : 'hover:text-gray-900';
 
   return (
-    <footer className={`border-t transition-colors duration-300 ${footerBg}`}>
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <footer className={`relative border-t backdrop-blur-xl transition-all duration-300 
+      ${theme === Theme.DARK 
+        ? 'bg-black/80 border-gray-800 text-white' 
+        : 'bg-white/80 border-gray-200 text-gray-900'
+      }`}>
+      {/* Background pattern */}
+      <div className="absolute inset-0 -z-10">
+        <div className={`absolute inset-0 opacity-[0.01] ${
+          theme === Theme.DARK ? 'bg-white' : 'bg-black'
+        }`} style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
+          backgroundSize: '20px 20px'
+        }} />
+      </div>
+      
+      <Container>
         {/* Main Footer Content */}
         <div className="py-12 md:py-16">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-12">
@@ -81,21 +91,17 @@ export function Footer({ theme = Theme.DARK }: FooterProps) {
               </p>
               
               {/* Social Links */}
-              <div className="flex space-x-4 pt-2">
+              <div className="flex space-x-2 pt-2">
                 {socialLinks.map((social) => (
                   <a
                     key={social.name}
                     href={social.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`${textMuted} ${textHover} transition-colors`}
+                    className={`p-2 rounded-lg transition-all duration-200 group hover:scale-110 ${textMuted} ${textHover}`}
                     aria-label={`${social.name} (opens in new tab)`}
                   >
-                    <span className="sr-only">{social.name}</span>
-                    <div className="h-5 w-5">
-                      {/* Icon placeholder */}
-                      <div className="h-full w-full bg-current opacity-70 hover:opacity-100 rounded" />
-                    </div>
+                    <social.icon size={18} className="transition-transform duration-200 group-hover:scale-110" />
                   </a>
                 ))}
               </div>
@@ -159,7 +165,7 @@ export function Footer({ theme = Theme.DARK }: FooterProps) {
             </div>
           </div>
         </div>
-      </div>
+      </Container>
     </footer>
   );
 }

@@ -1,8 +1,6 @@
-
 import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Theme } from '../../../types';
-import { X, ArrowLeft, Phone } from 'lucide-react';
+import { X } from 'lucide-react';
+import { Theme } from '@/types';
 
 interface FullStoryModalProps {
   isOpen: boolean;
@@ -57,22 +55,22 @@ export const FullStoryModal: React.FC<FullStoryModalProps> = ({ isOpen, onClose,
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        className="absolute inset-0"
         onClick={onClose}
       />
       
       {/* Modal */}
       <div className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto border
         ${theme === Theme.DARK 
-          ? 'bg-black border-white/20' 
-          : 'bg-white border-black/20'
+          ? 'border-white/20' 
+          : 'border-black/20'
         } backdrop-blur-xl`}>
         
         {/* Header */}
         <div className={`sticky top-0 flex items-center justify-between p-6 border-b
           ${theme === Theme.DARK 
-            ? 'border-white/10 bg-black/90' 
-            : 'border-black/10 bg-white/90'
+            ? 'border-white/10' 
+            : 'border-black/10'
           } backdrop-blur-xl`}>
           <h2 className={`text-2xl font-medium ${
             theme === Theme.DARK ? 'text-white' : 'text-black'

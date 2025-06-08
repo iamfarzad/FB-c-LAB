@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bot, ArrowRight, Sparkles } from 'lucide-react';
-import { Theme } from '../../../types';
+import { Theme } from '@/types';
 // Background pattern is now handled by Layout component
 
 interface HomeFinalCTASectionProps {
@@ -15,8 +14,7 @@ export const HomeFinalCTASection: React.FC<HomeFinalCTASectionProps> = ({ theme,
 
   return (
     <section 
-      className={`relative py-32 lg:py-40 text-center transition-all duration-700 overflow-hidden
-        ${theme === Theme.DARK ? 'bg-black' : 'bg-white'}`}
+      className={`relative py-32 lg:py-40 text-center transition-all duration-700 overflow-hidden`}
     >
       {/* Background pattern is handled by Layout component */}
 
@@ -63,9 +61,6 @@ export const HomeFinalCTASection: React.FC<HomeFinalCTASectionProps> = ({ theme,
                 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
-              style={{
-                background: 'linear-gradient(45deg, var(--accent-color), var(--accent-color-hover))'
-              }}
             >
               <span className="relative z-10 flex items-center gap-2">
                 Book Your Free Consultation
@@ -73,8 +68,6 @@ export const HomeFinalCTASection: React.FC<HomeFinalCTASectionProps> = ({ theme,
                   group-hover:translate-x-1" />
               </span>
               
-              <div className="absolute inset-0 bg-gradient-to-r from-orange-600 to-amber-500 
-                opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               
               <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent 
                 via-white/20 to-transparent transform -translate-x-full group-hover:translate-x-full 
@@ -86,8 +79,8 @@ export const HomeFinalCTASection: React.FC<HomeFinalCTASectionProps> = ({ theme,
               className={`group relative px-10 py-5 rounded-xl font-bold text-lg 
                 transition-all duration-300 transform hover:scale-105 hover:shadow-xl
                 ${theme === Theme.DARK 
-                  ? 'bg-gray-800 text-white hover:bg-gray-700' 
-                  : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}
+                  ? 'text-white' 
+                  : 'text-gray-900'}`}
             >
               <span className="relative z-10 flex items-center gap-2">
                 <Bot size={20} className="text-orange-500" />
@@ -117,23 +110,6 @@ export const HomeFinalCTASection: React.FC<HomeFinalCTASectionProps> = ({ theme,
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes ping-slow {
-          0% {
-            transform: scale(1);
-            opacity: 0.8;
-          }
-          70%, 100% {
-            transform: scale(1.7);
-            opacity: 0;
-          }
-        }
-
-        .animate-ping-slow {
-          animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-        }
-      `}</style>
     </section>
   );
 };

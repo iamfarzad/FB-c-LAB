@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Theme } from '../../../types';
+import { Theme } from '@/types';
 import { Brain, Music, Edit3, Users, Laptop, ExternalLink } from 'lucide-react';
 
 interface RealProjectsAboutSectionProps {
@@ -87,23 +86,6 @@ export const RealProjectsAboutSection: React.FC<RealProjectsAboutSectionProps> =
           ))}
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes float-slow {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-        }
-        @keyframes float-slow-reverse {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(20px); }
-        }
-        .animate-float-slow {
-          animation: float-slow 8s ease-in-out infinite;
-        }
-        .animate-float-slow-reverse {
-          animation: float-slow-reverse 10s ease-in-out infinite;
-        }
-      `}</style>
     </section>
   );
 };

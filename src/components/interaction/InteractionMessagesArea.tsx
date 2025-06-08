@@ -1,6 +1,5 @@
-
 import React, { useRef, useEffect, useState } from 'react';
-import { Theme } from '../../../types';
+import { Theme } from '@/types';
 import { MessageSquare, ArrowDown } from 'lucide-react';
 
 interface Message {
@@ -18,9 +17,6 @@ interface InteractionMessagesAreaProps {
   theme: Theme;
   messages: Message[];
   isTyping?: boolean;
-  onExpandRequest?: (message: Message) => void;
-  onRetry?: (messageId: string) => void;
-  onFormSubmit?: (formData: any) => void;
   isFullscreen?: boolean;
   emptyStatePrompts?: string[];
 }
@@ -29,9 +25,6 @@ export const InteractionMessagesArea: React.FC<InteractionMessagesAreaProps> = (
   theme,
   messages,
   isTyping = false,
-  onExpandRequest,
-  onRetry,
-  onFormSubmit,
   isFullscreen = false,
   emptyStatePrompts = []
 }) => {

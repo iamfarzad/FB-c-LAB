@@ -1,6 +1,6 @@
 import React from 'react';
-import { Theme } from '../../../types';
-import { CheckCircle, Target } from 'lucide-react';
+import { Check, Users } from 'lucide-react';
+import { Theme } from '@/types';
 
 interface HowIWorkSectionProps {
   theme: Theme;
@@ -29,7 +29,7 @@ export const HowIWorkSection: React.FC<HowIWorkSectionProps> = ({ theme }) => {
         {/* Section Header */}
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full border border-orange-500/20 bg-orange-500/5 mb-8">
-            <Target size={16} className="text-orange-500" />
+            <Users size={16} className="text-orange-500" />
             <span className="text-sm font-medium text-orange-500">Methodology</span>
           </div>
           <h2 className={`text-4xl md:text-5xl lg:text-6xl font-bold ${
@@ -53,7 +53,7 @@ export const HowIWorkSection: React.FC<HowIWorkSectionProps> = ({ theme }) => {
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <div className="mr-4 mt-1">
-                  <CheckCircle size={24} className="text-orange-500 transition-transform duration-300 group-hover:scale-110" />
+                  <Check size={24} className="text-orange-500 transition-transform duration-300 group-hover:scale-110" />
                 </div>
                 <p className={`text-lg font-medium leading-relaxed ${
                   theme === Theme.DARK ? 'text-gray-300' : 'text-gray-700'
@@ -78,16 +78,6 @@ export const HowIWorkSection: React.FC<HowIWorkSectionProps> = ({ theme }) => {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes pulse-gentle {
-          0%, 100% { opacity: 0.03; }
-          50% { opacity: 0.06; }
-        }
-        .animate-pulse-gentle {
-          animation: pulse-gentle 6s ease-in-out infinite;
-        }
-      `}</style>
     </section>
   );
 };

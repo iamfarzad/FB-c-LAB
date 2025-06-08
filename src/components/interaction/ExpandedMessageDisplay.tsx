@@ -1,13 +1,12 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Download, ZoomIn, ZoomOut, RotateCw, Share2, Copy, Check, Maximize2, Minimize2 } from 'lucide-react';
-import { ChatMessage, MessageType, Theme } from '../../../types';
+import { X, Download, ZoomIn, ZoomOut, RotateCw, Share2, Copy, Check, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
+import { ChatMessage, MessageType, Theme, WebSource } from '@/types';
 
 interface ExpandedMessageDisplayProps {
   message: ChatMessage;
   theme: Theme;
   onClose: () => void;
-  onDownload?: () => void;
+  onDownload?: (url: string, filename: string) => void;
 }
 
 export const ExpandedMessageDisplay: React.FC<ExpandedMessageDisplayProps> = ({
@@ -25,357 +24,143 @@ export const ExpandedMessageDisplay: React.FC<ExpandedMessageDisplayProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  // Theme-based styling
-  const overlayBg = theme === Theme.DARK 
-    ? 'bg-black/95 backdrop-blur-xl' 
-    : 'bg-white/95 backdrop-blur-xl';
-  
-  const cardBg = theme === Theme.DARK 
-    ? 'bg-black/90 border-white/10' 
-    : 'bg-white/90 border-black/10';
-  
-  const textColor = theme === Theme.DARK ? 'text-white' : 'text-black';
-  const mutedTextColor = theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600';
-  const buttonBg = theme === Theme.DARK ? 'bg-white/10 hover:bg-white/20' : 'bg-black/10 hover:bg-black/20';
+  const imageUrl = message.imageUrl || (message.images && message.images[0]?.base64Data ? `data:${message.images[0].mimeType};base64,${message.images[0].base64Data}` : null);
 
-  // Handle keyboard shortcuts
+  // Theme-based styling
+  const overlayBg = 'bg-black/80 backdrop-blur-lg';
+  const cardBg = theme === Theme.DARK ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200';
+  const textColor = theme === Theme.DARK ? 'text-gray-200' : 'text-gray-800';
+  const mutedTextColor = theme === Theme.DARK ? 'text-gray-400' : 'text-gray-500';
+  const buttonBg = theme === Theme.DARK ? 'bg-white/10 hover:bg-white/20' : 'bg-black/5 hover:bg-black/10';
+
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      switch (e.key) {
-        case 'Escape':
-          onClose();
-          break;
-        case '+':
-        case '=':
-          if (message.type === MessageType.IMAGE) {
-            setImageScale(prev => Math.min(prev + 0.25, 3));
-          }
-          break;
-        case '-':
-          if (message.type === MessageType.IMAGE) {
-            setImageScale(prev => Math.max(prev - 0.25, 0.25));
-          }
-          break;
-        case 'r':
-          if (message.type === MessageType.IMAGE) {
-            setImageRotation(prev => (prev + 90) % 360);
-          }
-          break;
-        case 'f':
-          setIsFullscreen(prev => !prev);
-          break;
-      }
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'f') setIsFullscreen(prev => !prev);
     };
-
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [message.type, onClose]);
+  }, [onClose]);
 
-  // Handle copy to clipboard
   const handleCopy = async () => {
-    try {
-      if (message.type === MessageType.IMAGE && message.imageUrl) {
-        // For images, copy the URL
-        await navigator.clipboard.writeText(message.imageUrl);
-      } else {
-        // For text, copy the content
-        await navigator.clipboard.writeText(message.text || '');
-      }
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
+    await navigator.clipboard.writeText(message.text || '');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  // Handle share
   const handleShare = async () => {
     if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Shared Message',
-          text: message.text || '',
-          url: message.type === MessageType.IMAGE ? message.imageUrl : undefined
-        });
-      } catch (err) {
-        console.error('Failed to share:', err);
-      }
+      await navigator.share({ title: 'Shared from F.B/c AI', text: message.text || '' });
     } else {
-      // Fallback to copy
       handleCopy();
     }
   };
+  
+  const handleDownloadClick = () => {
+      if (imageUrl && onDownload) {
+          const filename = `generated-image-${message.id}.png`;
+          onDownload(imageUrl, filename);
+      }
+  }
 
-  // Reset image transformations
   const resetImage = () => {
     setImageScale(1);
     setImageRotation(0);
   };
 
-  // Action buttons configuration
+  // --- UI DEFINITIONS ---
   const actionButtons = [
-    {
-      icon: copied ? Check : Copy,
-      label: copied ? 'Copied!' : 'Copy',
-      onClick: handleCopy,
-      show: true
-    },
-    {
-      icon: Share2,
-      label: 'Share',
-      onClick: handleShare,
-      show: navigator.share !== undefined
-    },
-    {
-      icon: Download,
-      label: 'Download',
-      onClick: onDownload,
-      show: message.type === MessageType.IMAGE && onDownload !== undefined
-    },
-    {
-      icon: isFullscreen ? Minimize2 : Maximize2,
-      label: isFullscreen ? 'Exit Fullscreen' : 'Fullscreen',
-      onClick: () => setIsFullscreen(!isFullscreen),
-      show: true
-    }
+    { icon: copied ? Check : Copy, label: copied ? 'Copied!' : 'Copy', onClick: handleCopy, show: !!message.text },
+    { icon: Share2, label: 'Share', onClick: handleShare, show: !!navigator.share },
+    { icon: Download, label: 'Download', onClick: handleDownloadClick, show: !!imageUrl && !!onDownload },
   ];
 
-  const imageControls = message.type === MessageType.IMAGE ? [
-    {
-      icon: ZoomIn,
-      label: 'Zoom In',
-      onClick: () => setImageScale(prev => Math.min(prev + 0.25, 3)),
-      disabled: imageScale >= 3
-    },
-    {
-      icon: ZoomOut,
-      label: 'Zoom Out',
-      onClick: () => setImageScale(prev => Math.max(prev - 0.25, 0.25)),
-      disabled: imageScale <= 0.25
-    },
-    {
-      icon: RotateCw,
-      label: 'Rotate',
-      onClick: () => setImageRotation(prev => (prev + 90) % 360),
-      disabled: false
-    }
-  ] : [];
+  const imageControls = [
+    { icon: ZoomIn, label: 'Zoom In', onClick: () => setImageScale(prev => Math.min(prev + 0.2, 3)), disabled: imageScale >= 3 },
+    { icon: ZoomOut, label: 'Zoom Out', onClick: () => setImageScale(prev => Math.max(prev - 0.2, 0.25)), disabled: imageScale <= 0.25 },
+    { icon: RotateCw, label: 'Rotate', onClick: () => setImageRotation(prev => (prev + 90) % 360) },
+    { icon: RefreshCw, label: 'Reset', onClick: resetImage },
+  ];
 
   return (
-    <div 
-      className={`
-        fixed inset-0 z-[90] flex items-center justify-center p-4
-        ${overlayBg} ${isFullscreen ? 'p-0' : 'p-4 sm:p-6 lg:p-8'}
-        transition-all duration-300 ease-out
-      `}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+    <div
+      ref={containerRef}
+      className={`fixed inset-0 z-[90] flex items-center justify-center transition-all duration-300 ${overlayBg}`}
+      onClick={onClose}
     >
-      {/* Main Container */}
-      <div 
-        ref={containerRef}
-        className={`
-          relative w-full max-w-6xl max-h-full
-          ${isFullscreen ? 'w-full h-full max-w-none' : 'rounded-2xl'}
-          ${cardBg} border shadow-2xl
-          flex flex-col overflow-hidden
-          transform transition-all duration-300 ease-out
-        `}
+      <div
+        className={`relative flex flex-col transition-all duration-300 rounded-lg border shadow-2xl ${cardBg} ${isFullscreen ? 'w-full h-full rounded-none' : 'w-full max-w-4xl h-auto max-h-[90vh]'}`}
+        onClick={(e) => e.stopPropagation()}
       >
-        {/* Enhanced Header */}
-        <div className={`
-          flex-shrink-0 px-4 sm:px-6 py-4 border-b
-          ${theme === Theme.DARK ? 'border-white/10' : 'border-black/10'}
-          bg-gradient-to-r ${theme === Theme.DARK ? 'from-orange-500/10 to-transparent' : 'from-orange-100/50 to-transparent'}
-        `}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className={`
-                p-2 rounded-lg border ${theme === Theme.DARK ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/10'}
-              `}>
-                {message.type === MessageType.IMAGE ? (
-                  <div className="w-5 h-5 bg-gradient-to-br from-orange-400 to-orange-600 rounded" />
-                ) : (
-                  <div className="w-5 h-5 bg-gradient-to-br from-blue-400 to-blue-600 rounded" />
-                )}
-              </div>
-              <div>
-                <h3 className={`text-lg font-semibold ${textColor}`}>
-                  {message.type === MessageType.IMAGE ? 'Image Viewer' : 'Message Viewer'}
-                </h3>
-                <p className={`text-xs ${mutedTextColor}`}>
-                  {message.timestamp ? new Date(message.timestamp).toLocaleString() : 'Expanded view'}
-                </p>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center space-x-2">
-              {actionButtons.filter(btn => btn.show).map((button, index) => (
-                <button
-                  key={index}
-                  onClick={button.onClick}
-                  className={`
-                    p-2 rounded-lg transition-all duration-200
-                    ${buttonBg} ${mutedTextColor} hover:text-orange-500
-                    hidden sm:flex items-center justify-center
-                  `}
-                  title={button.label}
-                >
-                  <button.icon size={18} />
-                </button>
-              ))}
-              
-              <button 
-                onClick={onClose}
-                className={`
-                  p-2 rounded-lg transition-all duration-200
-                  ${buttonBg} ${mutedTextColor} hover:text-red-500
-                `}
-                title="Close (Esc)"
-              >
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-
-          {/* Image Controls */}
-          {message.type === MessageType.IMAGE && (
-            <div className="flex items-center justify-between mt-4">
-              <div className="flex items-center space-x-2">
-                {imageControls.map((control, index) => (
-                  <button
-                    key={index}
-                    onClick={control.onClick}
-                    disabled={control.disabled}
-                    className={`
-                      flex items-center space-x-2 px-3 py-2 rounded-lg text-sm
-                      transition-all duration-200
-                      ${control.disabled 
-                        ? 'opacity-50 cursor-not-allowed' 
-                        : `${buttonBg} hover:bg-orange-500/20 hover:text-orange-500`
-                      }
-                    `}
-                    title={control.label}
-                  >
-                    <control.icon size={16} />
-                    <span className="hidden sm:inline">{control.label}</span>
-                  </button>
-                ))}
-                
-                <button
-                  onClick={resetImage}
-                  className={`
-                    px-3 py-2 rounded-lg text-sm transition-all duration-200
-                    ${buttonBg} hover:bg-orange-500/20 hover:text-orange-500
-                  `}
-                >
-                  Reset
-                </button>
-              </div>
-
-              <div className={`text-sm ${mutedTextColor}`}>
-                Scale: {Math.round(imageScale * 100)}% | Rotation: {imageRotation}°
-              </div>
-            </div>
-          )}
-
-          {/* Keyboard Shortcuts Hint */}
-          <div className={`mt-3 text-xs ${mutedTextColor} hidden lg:block`}>
-            <span>Shortcuts: </span>
-            <kbd className="px-1 py-0.5 bg-black/20 rounded">Esc</kbd> Close • 
-            <kbd className="px-1 py-0.5 bg-black/20 rounded">F</kbd> Fullscreen
-            {message.type === MessageType.IMAGE && (
-              <>
-                {' • '}
-                <kbd className="px-1 py-0.5 bg-black/20 rounded">+/-</kbd> Zoom • 
-                <kbd className="px-1 py-0.5 bg-black/20 rounded">R</kbd> Rotate
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Content Area */}
-        <div className="flex-1 overflow-auto">
-          {message.type === MessageType.IMAGE ? (
-            <div className="flex items-center justify-center min-h-full p-4 sm:p-6">
-              {!imageLoaded && !imageError && (
-                <div className="flex flex-col items-center space-y-4">
-                  <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-                  <p className={`text-sm ${mutedTextColor}`}>Loading image...</p>
-                </div>
-              )}
-              
-              {imageError && (
-                <div className="flex flex-col items-center space-y-4">
-                  <div className={`p-4 rounded-lg ${theme === Theme.DARK ? 'bg-red-500/10' : 'bg-red-100'}`}>
-                    <p className={`text-sm ${theme === Theme.DARK ? 'text-red-400' : 'text-red-600'}`}>
-                      Failed to load image
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {message.imageUrl && (
-                <img
-                  ref={imageRef}
-                  src={message.imageUrl}
-                  alt="Expanded view"
-                  className={`
-                    max-w-full max-h-full object-contain transition-all duration-300 ease-out
-                    ${!imageLoaded ? 'opacity-0' : 'opacity-100'}
-                  `}
-                  style={{
-                    transform: `scale(${imageScale}) rotate(${imageRotation}deg)`,
-                    transformOrigin: 'center'
-                  }}
-                  onLoad={() => {
-                    setImageLoaded(true);
-                    setImageError(false);
-                  }}
-                  onError={() => {
-                    setImageError(true);
-                    setImageLoaded(false);
-                  }}
-                  draggable={false}
-                />
-              )}
-            </div>
-          ) : (
-            <div className="p-4 sm:p-6 lg:p-8">
-              <div className={`
-                prose prose-lg max-w-none
-                ${theme === Theme.DARK ? 'prose-invert' : ''}
-                ${textColor}
-              `}>
-                <div className="whitespace-pre-wrap leading-relaxed">
-                  {message.text}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Mobile Action Bar */}
-        <div className={`
-          sm:hidden flex-shrink-0 px-4 py-3 border-t
-          ${theme === Theme.DARK ? 'border-white/10 bg-black/50' : 'border-black/10 bg-white/50'}
-        `}>
-          <div className="flex items-center justify-center space-x-4">
-            {actionButtons.filter(btn => btn.show).map((button, index) => (
-              <button
-                key={index}
-                onClick={button.onClick}
-                className={`
-                  flex flex-col items-center space-y-1 p-2 rounded-lg
-                  transition-all duration-200 ${buttonBg}
-                `}
-              >
-                <button.icon size={18} className="text-orange-500" />
-                <span className={`text-xs ${mutedTextColor}`}>{button.label}</span>
+        {/* --- HEADER --- */}
+        <header className="flex items-center justify-between p-3 border-b" style={{ borderColor: theme === Theme.DARK ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+          <div className="flex items-center space-x-2">
+            {actionButtons.filter(b => b.show).map((btn, i) => (
+              <button key={i} onClick={btn.onClick} className={`p-2 rounded-md ${buttonBg} ${textColor}`} title={btn.label}>
+                <btn.icon size={16} />
               </button>
             ))}
           </div>
-        </div>
+          <div className="flex items-center space-x-2">
+            <button onClick={() => setIsFullscreen(!isFullscreen)} className={`p-2 rounded-md ${buttonBg} ${textColor}`} title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}>
+              {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+            <button onClick={onClose} className={`p-2 rounded-md ${buttonBg} ${textColor}`} title="Close (Esc)">
+              <X size={16} />
+            </button>
+          </div>
+        </header>
+
+        {/* --- CONTENT --- */}
+        <main className="flex-1 overflow-auto p-6">
+          {message.type === MessageType.IMAGE && imageUrl && (
+            <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                {!imageLoaded && !imageError && <div className={`${textColor}`}>Loading image...</div>}
+                {imageError && <div className={`text-red-500`}>Failed to load image.</div>}
+                <img
+                    ref={imageRef}
+                    src={imageUrl}
+                    alt="Expanded content"
+                    className="max-w-full max-h-full object-contain transition-transform duration-200 cursor-grab"
+                    style={{ transform: `scale(${imageScale}) rotate(${imageRotation}deg)`, visibility: imageLoaded ? 'visible' : 'hidden' }}
+                    onLoad={() => setImageLoaded(true)}
+                    onError={() => setImageError(true)}
+                />
+            </div>
+          )}
+          {message.text && (
+            <div className={`prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap break-words ${textColor}`}>
+              {message.text}
+            </div>
+          )}
+          {message.sources && (
+            <div className="mt-6 pt-4 border-t" style={{ borderColor: theme === Theme.DARK ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+              <h4 className={`font-semibold mb-2 ${mutedTextColor}`}>Sources</h4>
+              <ul className="space-y-1 list-none p-0">
+                {message.sources.map((source: WebSource, index: number) => (
+                  <li key={index}>
+                    <a href={source.uri} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                      {source.title || source.uri}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </main>
+
+        {/* --- FOOTER --- */}
+        {message.type === MessageType.IMAGE && (
+          <footer className="flex items-center justify-center p-3 border-t" style={{ borderColor: theme === Theme.DARK ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+            <div className="flex items-center space-x-2">
+              {imageControls.map((btn, i) => (
+                <button key={i} onClick={btn.onClick} disabled={btn.disabled} className={`p-2 rounded-md disabled:opacity-50 ${buttonBg} ${textColor}`} title={btn.label}>
+                  <btn.icon size={16} />
+                </button>
+              ))}
+            </div>
+          </footer>
+        )}
       </div>
     </div>
   );

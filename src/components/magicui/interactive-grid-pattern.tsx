@@ -1,5 +1,3 @@
-"use client";
-
 import * as React from "react"
 import { cn } from "../../lib/utils"
 
@@ -19,24 +17,32 @@ export function InteractiveGridPattern({
   width: widthProp,
   height: heightProp,
   interactive = true,
-  squares = [],
+  squares = [
+    [4, 4],
+    [5, 1],
+    [8, 5],
+    [5, 6],
+    [5, 8],
+    [9, 10],
+    [1, 3],
+    [12, 3],
+    [3, 8],
+    [11, 14],
+  ],
   cellSize = 4,
   className,
   ...props
 }: InteractiveGridPatternProps) {
   const containerRef = React.useRef<HTMLDivElement>(null)
-  const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 })
   const [mousePosition, setMousePosition] = React.useState<{ x: number; y: number } | null>(
     null
   )
-  const [isHovered, setIsHovered] = React.useState(false)
 
   // Update dimensions on mount and window resize
   React.useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
-        const { width, height } = containerRef.current.getBoundingClientRect()
-        setDimensions({ width, height })
+        // You can get width and height here if needed for other calculations
       }
     }
 
@@ -55,63 +61,77 @@ export function InteractiveGridPattern({
     setMousePosition({ x, y })
   }
 
-  // Calculate the number of cells in the grid
-  const width = widthProp || dimensions.width
-  const height = heightProp || dimensions.height
-  const numCols = Math.ceil(width / size) + 1
-  const numRows = Math.ceil(height / size) + 1
-
-  // Generate the grid cells
-  const cells = []
-  for (let i = 0; i < numRows; i++) {
-    for (let j = 0; j < numCols; j++) {
-      const x = j * size
-      const y = i * size
-      const isActive = squares.some(([row, col]) => row === i && col === j)
-      
-      cells.push(
-        <div
-          key={`${i}-${j}`}
-          className={cn(
-            "absolute rounded-full bg-current transition-all duration-300 ease-in-out",
-            isActive ? "opacity-100" : "opacity-10"
-          )}
-          style={{
-            width: cellSize,
-            height: cellSize,
-            left: x - cellSize / 2,
-            top: y - cellSize / 2,
-            transform: mousePosition
-              ? `translate(${(mousePosition.x - x) / 20}px, ${(mousePosition.y - y) / 20}px)`
-              : "translate(0, 0)",
-            transition: "transform 0.3s ease-out, opacity 0.3s ease-out",
-          }}
-        />
-      )
-    }
-  }
+  // Generate the grid pattern with SVG
+  const gridId = React.useMemo(() => `grid-${Math.random().toString(36).substr(2, 9)}`, [])
 
   return (
     <div
       ref={containerRef}
       className={cn(
-        "pointer-events-none absolute inset-0 overflow-hidden",
+        "absolute inset-0 w-full h-full overflow-hidden",
         interactive && "pointer-events-auto",
         className
       )}
       onMouseMove={interactive ? handleMouseMove : undefined}
-      onMouseEnter={() => interactive && setIsHovered(true)}
-      onMouseLeave={() => interactive && setIsHovered(false)}
+      onMouseEnter={() => interactive}
+      onMouseLeave={() => interactive}
       {...props}
     >
-      <div
-        className={cn(
-          "absolute inset-0 transition-opacity duration-300",
-          isHovered && interactive ? "opacity-100" : "opacity-70"
-        )}
+      <svg
+        className="absolute inset-0 w-full h-full"
+        xmlns="http://www.w3.org/2000/svg"
       >
-        {cells}
-      </div>
+        <defs>
+          <pattern
+            id={gridId}
+            width={size}
+            height={size}
+            patternUnits="userSpaceOnUse"
+          >
+            <path
+              d={`M ${size} 0 L 0 0 0 ${size}`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+              className="opacity-30"
+            />
+          </pattern>
+        </defs>
+        <rect
+          width="100%"
+          height="100%"
+          fill={`url(#${gridId})`}
+          className="text-muted-foreground/20"
+        />
+        
+        {/* Interactive squares */}
+        {squares.map(([row, col], index) => {
+          const x = col * size
+          const y = row * size
+          
+          let scale = 1
+          if (mousePosition && interactive) {
+            const distance = Math.sqrt((mousePosition.x - x) ** 2 + (mousePosition.y - y) ** 2)
+            scale = Math.max(1, 1.5 - distance / 200)
+          }
+          
+          return (
+            <rect
+              key={index}
+              x={x}
+              y={y}
+              width={size}
+              height={size}
+              fill="currentColor"
+              className="opacity-20 transition-all duration-300 ease-out"
+              style={{
+                transform: `scale(${scale})`,
+                transformOrigin: `${x + size/2}px ${y + size/2}px`,
+              }}
+            />
+          )
+        })}
+      </svg>
     </div>
   )
 }

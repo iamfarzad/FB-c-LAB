@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Theme } from '../../../types';
+import { Theme } from '@/types';
 
 interface MinimalTerminalProps {
   theme: Theme;

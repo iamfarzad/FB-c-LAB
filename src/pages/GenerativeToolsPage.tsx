@@ -1,14 +1,12 @@
-import React from 'react';
-import Layout from '../src/components/Layout'; // Assuming a common Layout component
-import ImageGeneratorUI from '../src/components/generative/ImageGeneratorUI';
-import GroundedSearchUI from '../src/components/generative/GroundedSearchUI';
-import DocumentationGeneratorUI from '../src/components/generative/DocumentationGeneratorUI';
-import Container from '@/components/Container'; // Assuming Container component for consistent spacing
+import Layout from '@/components/Layout'; // Assuming a common Layout component
+import ImageGeneratorUI from '@/components/generative/ImageGeneratorUI';
+import GroundedSearchUI from '@/components/generative/GroundedSearchUI';
+import DocumentationGeneratorUI from '@/components/generative/DocumentationGeneratorUI';
 
 const GenerativeToolsPage: React.FC = () => {
   return (
     <Layout>
-      <Container>
+      <div className="container mx-auto px-6">
         <header style={{ textAlign: 'center', margin: '40px 0' }}>
           <h1>Generative AI Tools</h1>
           <p>Explore various generative capabilities powered by Gemini.</p>
@@ -25,7 +23,7 @@ const GenerativeToolsPage: React.FC = () => {
         <section id="documentation-generator" style={{ marginTop: '40px', marginBottom: '40px' }}>
           <DocumentationGeneratorUI />
         </section>
-      </Container>
+      </div>
     </Layout>
   );
 };

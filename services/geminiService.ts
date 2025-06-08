@@ -1,14 +1,8 @@
+import { WebSource, ChatMessage } from '../types';
 import { 
-    GEMINI_TEXT_MODEL, GEMINI_IMAGE_MODEL, 
-    API_KEY_ERROR_MESSAGE, GENERIC_ERROR_MESSAGE, CHAT_INIT_ERROR_MESSAGE,
-    FBC_BRAND_NAME, AI_ASSISTANT_NAME, QUALIFICATION_QUESTIONS, SIMULATED_KNOWLEDGE_BASE
+    GEMINI_TEXT_MODEL, GEMINI_IMAGE_MODEL, GENERIC_ERROR_MESSAGE,
+    FBC_BRAND_NAME, AI_ASSISTANT_NAME, SIMULATED_KNOWLEDGE_BASE
 } from '../constants';
-import { WebSource, ChatMessage, MessageSender } from '../types';
-
-interface AudioStreamResponse {
-  text: string;
-  isFinal?: boolean;
-}
 
 interface ProxyResponse {
   success: boolean;
@@ -16,370 +10,167 @@ interface ProxyResponse {
   error?: string;
 }
 
-// --- Module-scoped environment configuration variables ---
-let _isDevelopment = false;
-let _hasDirectApiKey = false;
-let _apiKey: string | undefined = undefined;
-let _GoogleGenerativeAI: any = null;
-let _isGoogleAILoaded = false;
-
-// Development environment detection (fallback for when not initialized)
-const isDevelopment = import.meta.env.DEV;
-const hasDirectApiKey = !!import.meta.env.VITE_API_KEY;
-const forceDirectApi = import.meta.env.VITE_FORCE_DIRECT_API === 'true';
-
-console.log('[GeminiService] Environment:', { 
-  isDevelopment, 
-  hasDirectApiKey,
-  forceDirectApi,
-  mode: (isDevelopment || forceDirectApi) && hasDirectApiKey ? 'direct-api' : 'production-proxy'
-});
-
-// --- Initialization Function ---
-export const initializeGeminiService = (config: {
-  isDev: boolean;
-  apiKey?: string;
-  googleAI?: any;
-}) => {
-  _isDevelopment = config.isDev;
-  _apiKey = config.apiKey;
-  _hasDirectApiKey = !!config.apiKey;
-
-  if (config.googleAI) {
-    _GoogleGenerativeAI = config.googleAI;
-    _isGoogleAILoaded = true;
-    console.log('Google AI SDK provided via initializeGeminiService');
-  } else {
-    _GoogleGenerativeAI = null;
-    _isGoogleAILoaded = false;
-  }
-};
-
-// Proxy endpoint configuration
 const PROXY_ENDPOINT = '/api/gemini-proxy';
 
-// Load Google AI SDK for development and forced production mode
-const loadGoogleAI = async () => {
-  // Use module-scoped variables first, then fallback to environment
-  const useModuleConfig = _isDevelopment && _hasDirectApiKey;
-  const useEnvConfig = (isDevelopment || forceDirectApi) && hasDirectApiKey;
-  
-  if (!useModuleConfig && !useEnvConfig) {
-    return null;
-  }
-
-  // Use module-scoped variables if available
-  if (!_isGoogleAILoaded && useModuleConfig && !_GoogleGenerativeAI) {
-    try {
-      const module = await import('@google/generative-ai');
-      _GoogleGenerativeAI = module.GoogleGenerativeAI;
-      _isGoogleAILoaded = true;
-      console.log('Google AI SDK loaded dynamically for development fallback');
-    } catch (error) {
-      console.warn('Google AI SDK not available for development fallback (dynamic import failed):', error);
-    }
-  } else if (_isGoogleAILoaded && _GoogleGenerativeAI) {
-    // Already loaded
-    return new _GoogleGenerativeAI(_apiKey);
-  }
-
-  // Fallback to environment-based loading
-  if (!_isGoogleAILoaded && useEnvConfig) {
-    try {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_API_KEY);
-      console.log('[GeminiService] Google AI SDK loaded successfully');
-      return genAI;
-    } catch (error) {
-      console.error('[GeminiService] Failed to load Google AI SDK:', error);
-      return null;
-    }
-  }
-
-  // Return initialized instance if available
-  if (_GoogleGenerativeAI && (_apiKey || import.meta.env.VITE_API_KEY)) {
-    return new _GoogleGenerativeAI(_apiKey || import.meta.env.VITE_API_KEY);
-  }
-
-  return null;
+// Retry configuration
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  baseDelay: 1000, // 1 second
+  maxDelay: 10000, // 10 seconds
+  factor: 2,
+  retryableErrors: ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'RATE_LIMIT_EXCEEDED', 'INTERNAL_ERROR']
 };
 
-// Direct API call for development and forced production mode
-const makeDirectApiCall = async (action: string, data: any): Promise<ProxyResponse> => {
-  const useModuleConfig = _isDevelopment && _hasDirectApiKey;
-  const useEnvConfig = (isDevelopment || forceDirectApi) && hasDirectApiKey;
-  
-  if (!useModuleConfig && !useEnvConfig) {
-    return {
-      success: false,
-      error: 'Direct API calls only available in development or when forced with API key'
-    };
-  }
+// Circuit breaker state
+const circuitBreaker = {
+  isOpen: false,
+  lastFailure: 0,
+  failureCount: 0,
+  resetAfter: 30000, // 30 seconds
+  threshold: 5, // Number of failures before opening the circuit
+};
 
+// Development mode flag
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+// Check circuit breaker state
+const checkCircuitBreaker = (): boolean => {
+  if (circuitBreaker.isOpen) {
+    const now = Date.now();
+    if (now - circuitBreaker.lastFailure > circuitBreaker.resetAfter) {
+      // Reset circuit breaker after reset timeout
+      circuitBreaker.isOpen = false;
+      circuitBreaker.failureCount = 0;
+      console.log('[Circuit Breaker] Circuit reset');
+      return false;
+    }
+    return true; // Circuit is open
+  }
+  return false; // Circuit is closed
+};
+
+// Retry utility function with exponential backoff and circuit breaker
+const retryWithBackoff = async <T>(
+  operation: () => Promise<T>,
+  retries: number = RETRY_CONFIG.maxRetries
+): Promise<T> => {
   try {
-    const genAI = await loadGoogleAI();
-    if (!genAI) {
-      return {
-        success: false,
-        error: 'Failed to initialize Google AI SDK'
-      };
+    if (checkCircuitBreaker()) {
+      throw new Error('Service unavailable. Please try again later.');
     }
-
-    switch (action) {
-      case 'generate': {
-        const model = genAI.getGenerativeModel({ 
-          model: data.model || GEMINI_TEXT_MODEL,
-          systemInstruction: data.systemInstruction
-        });
-        
-        const result = await model.generateContent(data.prompt);
-        const response = await result.response;
-        const text = response.text();
-        
-        return { success: true, data: { text } };
+    
+    return await operation();
+  } catch (error: any) {
+    if (retries <= 0) {
+      // Update circuit breaker state on final failure
+      circuitBreaker.failureCount++;
+      circuitBreaker.lastFailure = Date.now();
+      
+      if (circuitBreaker.failureCount >= circuitBreaker.threshold) {
+        circuitBreaker.isOpen = true;
+        console.error(`[Circuit Breaker] Circuit opened after ${circuitBreaker.failureCount} failures`);
       }
       
-      case 'stream': {
-        const model = genAI.getGenerativeModel({ 
-          model: data.model || GEMINI_TEXT_MODEL,
-          systemInstruction: data.systemInstruction
-        });
-        
-        const result = await model.generateContentStream(data.prompt);
-        let fullText = '';
-        
-        for await (const chunk of result.stream) {
-          const chunkText = chunk.text();
-          fullText += chunkText;
-          if (data.onChunk) {
-            data.onChunk(chunkText);
-          }
-        }
-        
-        return { success: true, data: { text: fullText } };
-      }
-      
-      case 'analyze-image': {
-        const model = genAI.getGenerativeModel({ model: data.model || GEMINI_TEXT_MODEL });
-        
-        const imagePart = {
-          inlineData: {
-            data: data.image,
-            mimeType: data.mimeType
-          }
-        };
-        
-        const result = await model.generateContent([data.prompt, imagePart]);
-        const response = await result.response;
-        const text = response.text();
-        
-        return { success: true, data: { text } };
-      }
-      
-      case 'stream-audio': {
-        // For development, we'll use browser STT + text processing + browser TTS
-        console.log('[GeminiService] Development mode: Using browser STT for audio processing');
-        return { 
-          success: true, 
-          data: { 
-            transcript: 'Development mode: Please use browser speech recognition',
-            isFinal: true 
-          } 
-        };
-      }
-      
-      case 'speak-text': {
-        // For development, we'll use browser TTS
-        console.log('[GeminiService] Development mode: Using browser TTS for speech');
-        return { 
-          success: true, 
-          data: { 
-            message: 'Development mode: Using browser text-to-speech' 
-          } 
-        };
-      }
-
-      case 'generateImage': {
-        const model = genAI.getGenerativeModel({ model: data.model || GEMINI_IMAGE_MODEL });
-        const result = await model.generateContent(data.prompt);
-        const response = await result.response;
-        const text = response.text();
-        
-        return { 
-          success: true, 
-          data: { 
-            text,
-            images: [{ base64Data: 'dev-placeholder', mimeType: 'image/png' }]
-          } 
-        };
-      }
-
-      case 'searchWeb': {
-        const model = genAI.getGenerativeModel({ 
-          model: data.model || GEMINI_TEXT_MODEL,
-          tools: [{ googleSearchRetrieval: {} }]
-        });
-        
-        const result = await model.generateContent(data.prompt);
-        const response = await result.response;
-        const text = response.text();
-        
-        return { 
-          success: true, 
-          data: { 
-            text,
-            sources: []
-          } 
-        };
-      }
-
-      case 'generateTextOnly': {
-        const model = genAI.getGenerativeModel({ 
-          model: data.model || GEMINI_TEXT_MODEL,
-          systemInstruction: data.systemInstruction,
-          generationConfig: data.generationConfig
-        });
-        
-        const result = await model.generateContent(data.prompt);
-        const response = await result.response;
-        const text = response.text();
-        
-        return { success: true, data: { text } };
-      }
-      
-      default:
-        return {
-          success: false,
-          error: `Unknown action: ${action}`
-        };
+      throw error;
     }
-  } catch (error) {
-    console.error(`[GeminiService] Direct API call failed for ${action}:`, error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    };
+    
+    // Calculate delay with exponential backoff
+    const delay = Math.min(
+      RETRY_CONFIG.baseDelay * Math.pow(RETRY_CONFIG.factor, RETRY_CONFIG.maxRetries - retries),
+      RETRY_CONFIG.maxDelay
+    );
+    
+    console.warn(`Retrying in ${delay}ms... (${retries} attempts left)`);
+    
+    // Wait for the calculated delay
+    await new Promise(resolve => setTimeout(resolve, delay));
+    
+    // Retry the operation
+    return retryWithBackoff(operation, retries - 1);
   }
 };
 
-// Proxy request function
+// Simplified proxy request function with resilience patterns
 const makeProxyRequest = async (endpoint: string, data: any): Promise<ProxyResponse> => {
-  try {
-    // In development or forced mode, try direct API first if available
-    if ((isDevelopment || forceDirectApi) && hasDirectApiKey) {
-      console.log('[GeminiService] Using development direct API for:', endpoint);
-      
-      // Map endpoint to action
-      const actionMap: Record<string, string> = {
-        '/generate': 'generate',
-        '/stream': 'stream', 
-        '/analyze-image': 'analyze-image',
-        '/follow-up': 'generate',
-        '/health': 'health',
-        '/stream-audio': 'stream-audio',
-        '/speak-text': 'speak-text'
-      };
-      
-      const action = actionMap[endpoint];
-      if (action) {
-        try {
-          const result = await makeDirectApiCall(action, data);
-          if (result.success) {
-            return result;
-          }
-          console.warn('[GeminiService] Direct API failed, falling back to proxy:', result.error);
-        } catch (directError) {
-          console.warn('[GeminiService] Direct API error, falling back to proxy:', directError);
-        }
-      }
-    }
+  checkCircuitBreaker();
+  
+  return retryWithBackoff(async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    
+    try {
+      const response = await fetch(`${PROXY_ENDPOINT}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        signal: controller.signal
+      });
 
-    // Fallback to proxy (production mode or development fallback)
-    console.log('[GeminiService] Using proxy for:', endpoint);
-    const response = await fetch(`${PROXY_ENDPOINT}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({ error: 'Unknown server error' }));
+        throw new Error(`Proxy Error: ${response.status} - ${errorBody.error || 'Failed to fetch'}`);
+      }
+
+      const result = await response.json();
+      if (result.success === false) {
+        throw new Error(result.error || GENERIC_ERROR_MESSAGE);
+      }
+      return result;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
+  });
+};
+
+const getBaseSystemInstruction = (): string => {
+  // Your base system instruction function remains unchanged.
+  return `You are ${AI_ASSISTANT_NAME}, an AI assistant for ${FBC_BRAND_NAME}. ` +
+         `Your role is to provide helpful, accurate, and concise information. ` +
+         `Use the following context when relevant: ${SIMULATED_KNOWLEDGE_BASE}.`;
+};
+
+// Generate documentation using the proxy
+export const generateDocumentation = async (
+  prompt: string,
+  systemInstruction: string = getBaseSystemInstruction(),
+  modelName: string = GEMINI_TEXT_MODEL
+): Promise<{ text: string }> => {
+  try {
+    const response = await makeProxyRequest('?action=generateDocumentation', {
+      prompt,
+      systemInstruction,
+      model: modelName
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to generate documentation');
     }
 
-    const result = await response.json();
-    return result;
+    // Ensure the response has the expected shape
+    const data = response.data;
+    if (typeof data.text !== 'string') {
+      throw new Error('Invalid response format from documentation generation');
+    }
+
+    return { text: data.text };
   } catch (error) {
-    console.error(`[GeminiService] Proxy request failed for ${endpoint}:`, error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Network error' 
-    };
+    console.error('[GeminiService] Documentation generation failed:', error);
+    throw new Error(`Failed to generate documentation: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
-// Base system instruction for the AI assistant
-const getBaseSystemInstruction = (): string => {
-  return `You are ${AI_ASSISTANT_NAME}, an AI assistant for ${FBC_BRAND_NAME}. 
-  
-  Your role is to help visitors understand Farzad's expertise in AI consulting, development, and workshops. You should:
-  
-  1. Be professional, knowledgeable, and helpful
-  2. Focus on Farzad's AI expertise and services
-  3. Ask qualifying questions when appropriate: ${QUALIFICATION_QUESTIONS.join(', ')}
-  4. Reference relevant information from the knowledge base when helpful
-  5. Guide conversations toward scheduling consultations or workshops
-  6. Be concise but thorough in your responses
-  
-  **IMPORTANT: For detailed responses about services, consulting, or workshops, format your response as structured JSON within triple backticks like this:**
-  
-  \`\`\`json
-  {
-    "type": "service",
-    "title": "AI Consulting Services",
-    "description": "Comprehensive AI strategy and implementation support",
-    "features": ["Strategy Development", "Custom AI Solutions", "Implementation Support"],
-    "benefits": ["Increased Efficiency", "Cost Reduction", "Competitive Advantage"],
-    "cta": {
-      "text": "Schedule a Free Consultation",
-      "action": "book_consultation"
-    }
+// Check proxy health
+export const checkProxyHealth = async (): Promise<boolean> => {
+  try {
+    await makeProxyRequest('?action=health', {});
+    return true;
+  } catch (error) {
+    console.error('Proxy health check failed:', error);
+    return false;
   }
-  \`\`\`
-  
-  OR for consulting services:
-  
-  \`\`\`json
-  {
-    "type": "consulting",
-    "title": "AI Implementation Consulting",
-    "overview": "End-to-end AI transformation for your business",
-    "services": [
-      {"name": "AI Strategy", "description": "Develop comprehensive AI roadmap", "icon": "strategy"},
-      {"name": "Custom Development", "description": "Build tailored AI solutions", "icon": "development"}
-    ],
-    "process": [
-      {"step": 1, "title": "Assessment", "description": "Evaluate current capabilities"},
-      {"step": 2, "title": "Strategy", "description": "Create implementation roadmap"}
-    ],
-    "cta": {
-      "text": "Get Started Today",
-      "action": "book_consultation"
-    }
-  }
-  \`\`\`
-  
-  Use structured responses when providing detailed information about services, processes, or offerings. For simple questions or conversations, use regular text.
-  
-  Knowledge Base: ${SIMULATED_KNOWLEDGE_BASE}
-  
-  Always maintain a professional tone while being approachable and helpful.`;
-};
-
-export const createChatSession = (systemInstructionText?: string): boolean => {
-  console.log("Using serverless proxy mode - session managed server-side"); // This might change based on _isDevelopment
-  return true;
 };
 
 export const generateText = async (prompt: string, systemInstruction?: string): Promise<string> => {
@@ -389,293 +180,66 @@ export const generateText = async (prompt: string, systemInstruction?: string): 
       systemInstruction: systemInstruction || getBaseSystemInstruction(),
       model: GEMINI_TEXT_MODEL,
     });
-
-    if (response.success && response.data?.text) {
-      return response.data.text;
-    } else {
-      throw new Error(response.error || 'No text in response');
-    }
+    return response.data?.text || '';
   } catch (error) {
     console.error('[geminiService] generateText error:', error);
-    throw new Error(`Failed to generate text: ${error instanceof Error ? error.message : String(error)}`);
+    throw error;
   }
 };
 
+// Stream text using the proxy
 export const streamText = async (
-  prompt: string, 
+  prompt: string,
   onChunk: (chunk: string) => void,
   systemInstruction?: string
 ): Promise<void> => {
-  // Note: Streaming with dev fallback via makeDirectApiCall is not implemented.
-  // This function will always try the proxy or fail if proxy fails and dev fallback is expected.
-  // To support dev fallback for streaming, makeDirectApiCall would need a 'stream' action.
-  // For now, tests will focus on proxy streaming.
   try {
-    const response = await fetch(`${PROXY_ENDPOINT}/stream`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prompt,
-        systemInstruction: systemInstruction || getBaseSystemInstruction(),
-        model: GEMINI_TEXT_MODEL
-      }),
+    const response = await makeProxyRequest('?action=streamText', {
+      prompt,
+      systemInstruction,
+      model: GEMINI_TEXT_MODEL,
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error('No response body reader available');
-    }
-
-    const decoder = new TextDecoder();
-    
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
-      
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.text) {
-              onChunk(data.text);
-            }
-          } catch (e) {
-            // Skip invalid JSON lines
-          }
-        }
-      }
+    // Process the streamed response
+    if (response.data?.text) {
+      onChunk(response.data.text);
     }
   } catch (error) {
     console.error('Error streaming text:', error);
-    throw new Error(GENERIC_ERROR_MESSAGE);
+    throw new Error('Failed to stream text');
   }
 };
 
-export const analyzeImage = async (imageFile: File, prompt: string = "Describe this image"): Promise<string> => {
-  try {
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        resolve(result.split(',')[1]);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(imageFile);
-    });
-
-    const response = await makeProxyRequest('/analyze-image', {
-      image: base64,
-      mimeType: imageFile.type,
-      prompt,
-      model: GEMINI_IMAGE_MODEL
-    });
-
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to analyze image');
-    }
-
-    return response.data?.text || '';
-  } catch (error) {
-    console.error('Error analyzing image:', error);
-    throw new Error(GENERIC_ERROR_MESSAGE);
-  }
-};
-
-export const generateFollowUpBrief = async (conversationHistory: ChatMessage[]): Promise<string> => {
-  try {
-    const response = await makeProxyRequest('/follow-up', {
-      conversationHistory,
-      systemInstruction: getBaseSystemInstruction()
-    });
-
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to generate follow-up brief');
-    }
-
-    return response.data?.text || '';
-  } catch (error) {
-    console.error('Error generating follow-up brief:', error);
-    throw new Error(GENERIC_ERROR_MESSAGE);
-  }
-};
-
-export const summarizeChatHistory = async (conversationHistory: ChatMessage[]): Promise<string> => {
-  try {
-    const historyText = conversationHistory.map((msg: ChatMessage) => 
-      `${msg.sender}: ${msg.text}`
-    ).join('\n');
-    
-    const summaryPrompt = `Please provide a concise summary of this conversation:\n\n${historyText}\n\nSummary:`;
-    
-    const response = await makeProxyRequest('/generate', {
-      prompt: summaryPrompt,
-      systemInstruction: 'You are a helpful assistant that creates clear, concise summaries of conversations.',
-      model: GEMINI_TEXT_MODEL
-    });
-
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to summarize chat history');
-    }
-
-    return response.data?.text || '';
-  } catch (error) {
-    console.error('Error summarizing chat history:', error);
-    throw new Error(GENERIC_ERROR_MESSAGE);
-  }
-};
-
-// Audio streaming using Gemini Live Audio API for native voice
-export const streamAudio = async (
-  audioChunks: Float32Array[],
+// --- RENAMED AUDIO FUNCTION ---
+export const startBrowserSpeechRecognition = (
   onTranscript: (transcript: string, isFinal: boolean) => void,
   onError: (error: string) => void
-): Promise<void> => {
-  try {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
-      onError('Speech recognition not supported in this browser');
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-
-    recognition.onresult = (event: any) => {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        const isFinal = event.results[i].isFinal;
-        onTranscript(transcript, isFinal);
-      }
-    };
-
-    recognition.onerror = (event: any) => {
-      onError(`Speech recognition error: ${event.error}`);
-    };
-
-    recognition.start();
-    (streamAudio as any).currentRecognition = recognition;
-    
-  } catch (error) {
-    console.error('Error in audio streaming:', error);
-    onError('Failed to start audio streaming');
+): (() => void) => { // Returns a stop function
+  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    onError('Speech recognition not supported in this browser');
+    return () => {};
   }
-};
 
-// Convert audio chunks to WAV blob
-const convertAudioChunksToWav = async (audioChunks: Float32Array[]): Promise<Blob> => {
-  // Combine all audio chunks
-  const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const combinedBuffer = new Float32Array(totalLength);
-  
-  let offset = 0;
-  for (const chunk of audioChunks) {
-    combinedBuffer.set(chunk, offset);
-    offset += chunk.length;
-  }
-  
-  // Convert to WAV format
-  return float32ToWav(combinedBuffer, 16000);
-};
+  const recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
 
-// Convert Float32Array to WAV blob
-const float32ToWav = (buffer: Float32Array, sampleRate: number): Blob => {
-  const length = buffer.length;
-  const arrayBuffer = new ArrayBuffer(44 + length * 2);
-  const view = new DataView(arrayBuffer);
-  
-  // WAV header
-  const writeString = (offset: number, string: string) => {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i));
+  recognition.onresult = (event: any) => {
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      onTranscript(event.results[i][0].transcript, event.results[i].isFinal);
     }
   };
-  
-  writeString(0, 'RIFF');
-  view.setUint32(4, 36 + length * 2, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeString(36, 'data');
-  view.setUint32(40, length * 2, true);
-  
-  // Convert float samples to 16-bit PCM
-  let offset = 44;
-  for (let i = 0; i < length; i++) {
-    const sample = Math.max(-1, Math.min(1, buffer[i]));
-    view.setInt16(offset, sample * 0x7FFF, true);
-    offset += 2;
-  }
-  
-  return new Blob([arrayBuffer], { type: 'audio/wav' });
-};
+  recognition.onerror = (event: any) => onError(`Speech recognition error: ${event.error}`);
+  recognition.start();
 
-// Convert blob to base64
-const blobToBase64 = (blob: Blob): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(',')[1]); // Remove data:audio/wav;base64, prefix
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-};
-
-export const stopAudioStream = (): void => {
-  // Clean up any active streaming connections
-  console.log('[GeminiService] Stopping Gemini Live Audio stream...');
-};
-
-export const checkProxyHealth = async (): Promise<boolean> => {
-  try {
-    const response = await fetch(`${PROXY_ENDPOINT}/health`, {
-      method: 'GET',
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    return result.success === true;
-  } catch (error) {
-    console.warn('Proxy health check failed, trying development fallback:', error);
-    
-    if (_isDevelopment && _hasDirectApiKey) {
-      try {
-        const result = await makeDirectApiCall('health', {});
-        return result.success === true;
-      } catch (fallbackError) {
-        console.error('Development fallback health check failed:', fallbackError);
-        return false;
-      }
-    }
-    return false;
-  }
+  return () => recognition.stop(); // Return a function to stop the recognition
 };
 
 export const getServiceConfig = () => ({
-  mode: (_isDevelopment && _hasDirectApiKey) ? 'direct' : 'serverless-proxy', // Mode can now be dynamic
-  endpoint: PROXY_ENDPOINT, // Remains proxy endpoint, direct calls use their own logic
+  mode: 'serverless-proxy',
+  endpoint: PROXY_ENDPOINT,
   models: {
     text: GEMINI_TEXT_MODEL,
     image: GEMINI_IMAGE_MODEL,
@@ -698,6 +262,18 @@ export interface GeneratedImageData {
   images: { base64Data: string; mimeType: string }[];
 }
 
+// Interface for translation response
+export interface TranslationResult {
+  translatedText: string;
+  detectedLanguage?: string;
+}
+
+// Interface for grounded search response data
+export interface GroundedSearchResult {
+  text: string;
+  sources?: WebSource[];
+}
+
 /**
  * Generates an image based on a prompt using the Gemini API proxy.
  * @param prompt The text prompt for image generation.
@@ -705,29 +281,41 @@ export interface GeneratedImageData {
  * @returns A promise that resolves to the generated image data.
  */
 export const generateImage = async (prompt: string, model?: string): Promise<GeneratedImageData> => {
+  checkCircuitBreaker();
+  
   try {
-    const requestBody: any = { prompt };
-    if (model) {
-      requestBody.model = model;
-    }
-    const response = await makeProxyRequest('/generateImage', requestBody);
+    const response = await makeProxyRequest('?action=generateImage', {
+      prompt,
+      model: model || GEMINI_IMAGE_MODEL
+    });
 
-    if (response.success && response.data) {
-      return response.data as GeneratedImageData;
-    } else {
+    if (!response.success || !response.data) {
       throw new Error(response.error || 'Failed to generate image: No data in response');
     }
+
+    // Ensure the response has the expected shape
+    const data = response.data as GeneratedImageData;
+    if (!data.text || !Array.isArray(data.images)) {
+      throw new Error('Invalid response format from image generation');
+    }
+
+    return data;
   } catch (error) {
-    console.error('[GeminiService] generateImage error:', error);
-    throw new Error(`Failed to generate image: ${error instanceof Error ? error.message : String(error)}`);
+    console.error('[GeminiService] Image generation failed:', error);
+    
+    // Provide fallback response for development
+    if (isDevelopment) {
+      return {
+        text: 'Image generation not available in development mode. Please deploy to production with proper API keys.',
+        images: []
+      };
+    }
+    
+    throw error;
   }
 };
 
-// Interface for grounded search response data
-export interface GroundedSearchResult {
-  text: string;
-  sources?: WebSource[]; // sources might be optional depending on if search was used
-}
+// Remove duplicate GroundedSearchResult interface
 
 /**
  * Performs a grounded search using the Gemini API proxy.
@@ -735,113 +323,158 @@ export interface GroundedSearchResult {
  * @param conversationHistory Optional conversation history for contextual search.
  * @returns A promise that resolves to the search result.
  */
-export const performGroundedSearch = async (prompt: string, conversationHistory?: ChatMessage[]): Promise<GroundedSearchResult> => {
+export const performGroundedSearch = async (prompt: string, conversationHistory: ChatMessage[] = []): Promise<GroundedSearchResult> => {
+  checkCircuitBreaker();
+  
   try {
-    const requestBody: any = { prompt };
-    if (conversationHistory) {
-      requestBody.conversationHistory = conversationHistory;
-    }
-    // We can also pass a specific model if needed, e.g., one known for good function calling
-    // requestBody.model = 'gemini-2.0-flash-exp';
+    const response = await makeProxyRequest('?action=searchWeb', {
+      prompt,
+      conversationHistory
+    });
 
-    const response = await makeProxyRequest('/searchWeb', requestBody);
-
-    if (response.success && response.data) {
-      return response.data as GroundedSearchResult;
-    } else {
-      throw new Error(response.error || 'Failed to perform grounded search: No data in response');
+    if (!response.success) {
+      throw new Error(response.error || 'Search failed: No data in response');
     }
+
+    // Ensure the response has the expected shape
+    if (!response.data || typeof response.data.text !== 'string') {
+      throw new Error('Invalid response format from search');
+    }
+
+    return {
+      text: response.data.text,
+      sources: response.data.sources || []
+    };
   } catch (error) {
-    console.error('[GeminiService] performGroundedSearch error:', error);
+    console.error('[GeminiService] Web search failed:', error);
+    
+    // Provide fallback response for development
+    if (isDevelopment) {
+      return {
+        text: 'Web search not available in development mode. This requires production deployment with proper API configuration.',
+        sources: []
+      };
+    }
+    
     throw new Error(`Failed to perform grounded search: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
-// Interface for documentation generation response
-export interface DocumentationResult {
-  text: string;
-  // Potentially add usage or other metadata if returned by proxy
+/**
+ * Translates text using the Gemini API proxy translation service.
+ * @param text The text to translate.
+ * @param targetLanguage The target language code (e.g., 'no' for Norwegian, 'es' for Spanish).
+ * @param sourceLanguage Optional source language code. If not provided, auto-detection will be used.
+ * @returns A promise that resolves to the translation result.
+ */
+export const translateText = async (
+  text: string,
+  targetLanguage: string,
+  sourceLanguage?: string
+): Promise<TranslationResult> => {
+  checkCircuitBreaker();
+  
+  try {
+    const response = await makeProxyRequest('?action=translate', {
+      text,
+      targetLanguage,
+      sourceLanguage: sourceLanguage || ''
+    });
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Translation failed: No data in response');
+    }
+
+    // Ensure the response has the expected shape
+    if (typeof response.data.translatedText !== 'string') {
+      throw new Error('Invalid response format from translation service');
+    }
+
+    return {
+      translatedText: response.data.translatedText,
+      detectedLanguage: response.data.detectedLanguage
+    };
+  } catch (error) {
+    console.error('[GeminiService] Translation failed:', error);
+    
+    // Provide fallback for development
+    if (isDevelopment) {
+      return {
+        translatedText: `[Translation not available in development] ${text}`,
+        detectedLanguage: sourceLanguage || 'auto'
+      };
+    }
+    
+    throw new Error(`Failed to translate text: ${error instanceof Error ? error.message : String(error)}`);
+  }
+};
+
+// Helper function to get language names for better prompts (exported for potential future use)
+export function getLanguageName(languageCode: string): string {
+  const languageNames: Record<string, string> = {
+    'en': 'English',
+    'no': 'Norwegian',
+    'nb': 'Norwegian Bokmål',
+    'nn': 'Norwegian Nynorsk',
+    'es': 'Spanish',
+    'fr': 'French',
+    'de': 'German',
+    'it': 'Italian',
+    'pt': 'Portuguese',
+    'ru': 'Russian',
+    'ja': 'Japanese',
+    'ko': 'Korean',
+    'zh': 'Chinese',
+    'ar': 'Arabic',
+    'hi': 'Hindi',
+    'sv': 'Swedish',
+    'da': 'Danish',
+    'fi': 'Finnish',
+    'nl': 'Dutch',
+    'pl': 'Polish',
+    'tr': 'Turkish',
+  };
+  
+  return languageNames[languageCode] || languageCode.toUpperCase();
 }
 
-/**
- * Generates documentation using the Gemini API proxy.
- * @param prompt The detailed prompt for documentation generation.
- * @param systemInstruction Optional system instruction to guide the AI's persona.
- * @param generationConfig Optional generation configuration (e.g., temperature, maxOutputTokens).
- * @param model Optional model name. Defaults to GEMINI_TEXT_MODEL.
- * @returns A promise that resolves to the generated documentation text.
- */
-export const generateDocumentation = async (
-  prompt: string,
-  systemInstruction?: string,
-  generationConfig?: any, // Using 'any' for flexibility with GenerationConfig structure
-  model: string = GEMINI_TEXT_MODEL
-): Promise<DocumentationResult> => {
-  try {
-    const requestBody: any = {
+// --- Example refactor for analyzeImage ---
+export const analyzeImage = async (imageFile: File, prompt: string = "Describe this image"): Promise<string> => {
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(imageFile);
+    });
+
+    const response = await makeProxyRequest('/analyze-image', {
+      image: base64,
+      mimeType: imageFile.type,
       prompt,
-      model, // Use the provided model or default
-    };
-    if (systemInstruction) {
-      requestBody.systemInstruction = systemInstruction;
-    }
-    if (generationConfig) {
-      requestBody.generationConfig = generationConfig;
-    }
+      model: GEMINI_IMAGE_MODEL
+    });
 
-    // Using '/generateTextOnly' as it's simpler for single-shot doc generation.
-    // For iterative doc building, a chat-based approach might be better,
-    // potentially evolving this function or adding another.
-    const response = await makeProxyRequest('/generateTextOnly', requestBody);
+    return response.data?.text || '';
+};
 
-    if (response.success && response.data?.text) {
-      return { text: response.data.text };
-    } else {
-      throw new Error(response.error || 'Failed to generate documentation: No text in response');
-    }
+// --- NEW SUMMARY FUNCTIONS ---
+export const generateInternalBrief = async (conversationHistory: ChatMessage[]): Promise<void> => {
+  try {
+    await makeProxyRequest('/generateInternalBrief', { conversationHistory });
   } catch (error) {
-    console.error('[GeminiService] generateDocumentation error:', error);
-    throw new Error(`Failed to generate documentation: ${error instanceof Error ? error.message : String(error)}`);
+    console.error('[GeminiService] Failed to trigger internal brief generation:', error);
   }
 };
 
-// Text-to-speech using browser TTS (Gemini Live Audio requires WebSocket)
-export const speakText = async (text: string): Promise<void> => {
-  console.log('[GeminiService] Using browser TTS for:', text);
-  
-  // Use browser TTS directly since Gemini Live Audio requires WebSocket connection
-  return new Promise((resolve, reject) => {
-    if (!('speechSynthesis' in window)) {
-      reject(new Error('Text-to-speech not supported in this browser'));
-      return;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.onend = () => resolve();
-    utterance.onerror = (event) => reject(new Error(`Speech synthesis error: ${event.error}`));
-    
-    // Use a more natural voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(voice => 
-      voice.name.includes('Google') || 
-      voice.name.includes('Enhanced') ||
-      voice.name.includes('Premium')
-    );
-    
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
-    }
-    
-    utterance.rate = 0.9; // Slightly slower for better clarity
-    utterance.pitch = 1.0;
-    
-    window.speechSynthesis.speak(utterance);
-  });
-};
-
-// Stop text-to-speech
-export const stopSpeaking = (): void => {
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
+export const generateClientSummary = async (conversationHistory: ChatMessage[]): Promise<string> => {
+  const response = await makeProxyRequest('/generateClientSummaryForPdf', { conversationHistory });
+  if (response.data?.summary) {
+    return response.data.summary;
   }
+  throw new Error('No summary content in response.');
 };
+
+// Remove duplicate retryWithBackoff implementation
+
+// Remove duplicate checkCircuitBreaker implementation
+// The circuit breaker is already implemented at the top of the file

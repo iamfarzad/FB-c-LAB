@@ -1,8 +1,6 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { useTheme, Theme } from '../contexts/ThemeContext';
-import { GeometricAccent } from './ui/GeometricAccent';
-import Head from 'next/head';
-import { BackgroundPattern } from './layout/BackgroundPattern';
+import { AppBackground } from './AppBackground';
 
 interface LayoutProps {
   children: ReactNode;
@@ -21,39 +19,25 @@ export default function Layout({
 }: LayoutProps) {
   const { theme } = useTheme();
 
+  useEffect(() => {
+    // Update document title and meta tags
+    document.title = title;
+    
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', description);
+    }
+    
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', theme === Theme.DARK ? '#0a0a0a' : '#f8fafc');
+    }
+  }, [title, description, theme]);
+
   return (
     <div className={`relative min-h-screen flex flex-col ${className}`}>
-      <Head>
-        <title>{title}</title>
-        <meta name="description" content={description} />
-        <meta name="theme-color" content={theme === Theme.DARK ? '#0a0a0a' : '#f8fafc'} />
-      </Head>
-      
-      {/* Background Pattern */}
-      <div className="fixed inset-0 -z-10">
-        <BackgroundPattern />
-      </div>
-
-      {/* Responsive background accents */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
-        <div className="hidden sm:block">
-          <GeometricAccent 
-            theme={theme} 
-            position="top-right" 
-            size={500}
-            opacity={0.1}
-          />
-        </div>
-        
-        <div className="hidden sm:block">
-          <GeometricAccent 
-            theme={theme} 
-            position="bottom-left" 
-            size={400}
-            opacity={0.06}
-          />
-        </div>
-      </div>
+      {/* App Background */}
+      <AppBackground />
       
       {/* Skip to main content for better accessibility */}
       <a

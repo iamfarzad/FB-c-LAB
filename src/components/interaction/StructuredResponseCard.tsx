@@ -1,18 +1,15 @@
 import React from 'react';
-import { Theme } from '../../../types';
+import { Theme } from '@/types';
 import { 
   CheckCircle, 
   ArrowRight, 
   Star, 
-  Clock, 
-  Users, 
   Target, 
   Lightbulb,
   TrendingUp,
   Shield,
   Zap,
   Brain,
-  MessageSquare
 } from 'lucide-react';
 
 interface StructuredResponseCardProps {
@@ -93,16 +90,12 @@ export const StructuredResponseCard: React.FC<StructuredResponseCardProps> = ({
     return null;
   }
 
-  const cardBg = theme === Theme.DARK 
-    ? 'bg-gray-800/50 border-gray-700' 
-    : 'bg-white/50 border-gray-200';
-  
   const textColor = theme === Theme.DARK ? 'text-white' : 'text-black';
   const subtextColor = theme === Theme.DARK ? 'text-gray-300' : 'text-gray-700';
   const mutedColor = theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600';
 
   const renderServiceCard = (card: ServiceCard) => (
-    <div className={`p-6 rounded-lg border ${cardBg} space-y-4`}>
+    <div className={`p-6 rounded-lg space-y-4`}>
       <div>
         <h3 className={`text-xl font-semibold ${textColor} mb-2`}>{card.title}</h3>
         <p className={`${subtextColor} leading-relaxed`}>{card.description}</p>
@@ -145,7 +138,7 @@ export const StructuredResponseCard: React.FC<StructuredResponseCardProps> = ({
       {card.cta && (
         <button
           onClick={() => onAction?.(card.cta!.action)}
-          className="w-full mt-4 px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium"
+          className="w-full mt-4 px-4 py-3 text-white rounded-lg transition-colors font-medium"
         >
           {card.cta.text}
         </button>
@@ -154,7 +147,7 @@ export const StructuredResponseCard: React.FC<StructuredResponseCardProps> = ({
   );
 
   const renderConsultingCard = (card: ConsultingCard) => (
-    <div className={`p-6 rounded-lg border ${cardBg} space-y-6`}>
+    <div className={`p-6 rounded-lg space-y-6`}>
       <div>
         <h3 className={`text-xl font-semibold ${textColor} mb-2`}>{card.title}</h3>
         <p className={`${subtextColor} leading-relaxed`}>{card.overview}</p>
@@ -171,10 +164,10 @@ export const StructuredResponseCard: React.FC<StructuredResponseCardProps> = ({
               const IconComponent = iconMap[service.icon as keyof typeof iconMap] || iconMap.default;
               return (
                 <div key={index} className={`p-4 rounded-lg border ${
-                  theme === Theme.DARK ? 'border-gray-600 bg-gray-700/30' : 'border-gray-300 bg-gray-50/30'
+                  theme === Theme.DARK ? 'border-gray-600' : 'border-gray-300'
                 }`}>
                   <div className="flex items-start space-x-3">
-                    <div className="p-2 rounded-lg bg-orange-500/10">
+                    <div className="p-2 rounded-lg">
                       <IconComponent size={16} className="text-orange-500" />
                     </div>
                     <div className="flex-1">
@@ -198,7 +191,7 @@ export const StructuredResponseCard: React.FC<StructuredResponseCardProps> = ({
           <div className="space-y-3">
             {card.process.map((step, index) => (
               <div key={index} className="flex items-start space-x-4">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-500 text-white text-sm font-medium flex items-center justify-center">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full text-white text-sm font-medium flex items-center justify-center">
                   {step.step}
                 </div>
                 <div className="flex-1">
@@ -214,7 +207,7 @@ export const StructuredResponseCard: React.FC<StructuredResponseCardProps> = ({
       {card.cta && (
         <button
           onClick={() => onAction?.(card.cta!.action)}
-          className="w-full mt-4 px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium"
+          className="w-full mt-4 px-4 py-3 text-white rounded-lg transition-colors font-medium"
         >
           {card.cta.text}
         </button>

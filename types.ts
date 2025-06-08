@@ -1,4 +1,3 @@
-
 export enum Theme {
   LIGHT = 'light',
   DARK = 'dark',
@@ -31,9 +30,16 @@ export interface ChatMessage {
   type: MessageType;
   text?: string;
   imageUrl?: string;
+  images?: { base64Data: string; mimeType: string }[];
   sources?: WebSource[];
   timestamp: number;
-  isLoading?: boolean; // For AI thinking state on a specific message
+  isLoading?: boolean;
+  isPinned?: boolean;
+  error?: string;
+  form?: any[];
+  attachments?: any[];
+  isEditing?: boolean;
+  editedTimestamp?: number;
   formType?: FormType;
   formSubmitted?: boolean;
 }

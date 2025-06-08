@@ -1,223 +1,79 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sun, Moon, MessageSquare, Menu, X, Search, ChevronRight } from 'lucide-react'; 
-import { Theme } from '../../types';
-import { FBC_BRAND_NAME } from '../../constants';
+import { Sun, Moon, MessageSquare, Menu, X, Search, Languages } from 'lucide-react'; 
+import { Theme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { Button } from './ui/Button';
+import { cn } from '../lib/utils';
+
+const TechFBCLogo: React.FC<{ theme: Theme }> = ({ theme }) => (
+  <div className="flex items-center space-x-4">
+    {/* Minimalist icon */}
+    <div className="relative group">
+      <div className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:scale-105">
+        <span className="font-semibold text-sm">F</span>
+      </div>
+      <div className="absolute -inset-1 rounded-lg blur opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+    </div>
+    
+    {/* Clean typography */}
+    <div className="hidden sm:flex flex-col">
+      <div className={`font-medium text-lg leading-none tracking-tight transition-colors duration-300
+        ${theme === Theme.DARK ? 'text-white' : 'text-gray-900'}`}>
+        F.B/c
+      </div>
+      <div className={`text-xs font-normal mt-0.5 transition-colors duration-300
+        ${theme === Theme.DARK ? 'text-gray-400' : 'text-gray-500'}`}>
+      </div>
+    </div>
+  </div>
+);
 
 interface HeaderProps {
   theme: Theme;
   onToggleTheme: () => void;
-  onToggleChat: () => void; 
-  isChatOpen: boolean;      
+  onToggleChat: () => void;
+  isChatOpen: boolean;
 }
 
-// Clean, Modern Tech Logo Component
-const TechFBCLogo: React.FC<{ theme: Theme }> = ({ theme }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  
-  // Clean color scheme
-  const primaryColor = theme === Theme.DARK ? '#f97316' : '#ea580c';
-  const textColor = theme === Theme.DARK ? '#ffffff' : '#1f2937';
-  const subtleAccent = theme === Theme.DARK ? '#fb923c' : '#f97316';
-
-  return (
-    <div 
-      className="relative group cursor-pointer select-none"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div className="flex items-center space-x-3">
-        {/* Modern geometric icon */}
-        <div className="relative">
-          <div 
-            className={`w-8 h-8 rounded-lg transition-all duration-300 flex items-center justify-center
-              ${isHovered ? 'scale-110 rotate-3' : 'scale-100'}`}
-            style={{
-              background: `linear-gradient(135deg, ${primaryColor}, ${subtleAccent})`,
-              boxShadow: isHovered 
-                ? `0 8px 25px ${primaryColor}40, 0 0 0 1px ${primaryColor}20` 
-                : `0 2px 8px ${primaryColor}20`
-            }}
-          >
-            {/* Clean geometric pattern */}
-            <div className="relative w-4 h-4">
-              <div 
-                className="absolute inset-0 border-2 border-white/90 rounded-sm transform rotate-45"
-                style={{
-                  borderColor: theme === Theme.DARK ? '#ffffff' : '#ffffff',
-                }}
-              />
-              <div 
-                className="absolute top-1/2 left-1/2 w-1.5 h-1.5 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2"
-                style={{
-                  backgroundColor: theme === Theme.DARK ? '#ffffff' : '#ffffff',
-                }}
-              />
-            </div>
-          </div>
-          
-          {/* Subtle glow effect on hover */}
-          {isHovered && (
-            <div 
-              className="absolute inset-0 w-8 h-8 rounded-lg animate-pulse"
-              style={{
-                background: `radial-gradient(circle, ${primaryColor}30 0%, transparent 70%)`,
-                filter: 'blur(4px)',
-              }}
-            />
-          )}
-        </div>
-        
-        {/* Clean typography */}
-        <div className="flex flex-col">
-          <div 
-            className="font-bold text-xl tracking-tight transition-all duration-300"
-            style={{ 
-              color: textColor,
-              transform: isHovered ? 'translateX(2px)' : 'translateX(0)',
-            }}
-          >
-            <span>FB</span>
-            <span style={{ color: primaryColor }}>C</span>
-          </div>
-          
-          {/* Subtle tagline */}
-          <div 
-            className={`text-xs font-medium tracking-wide uppercase transition-all duration-300 overflow-hidden
-              ${isHovered ? 'opacity-100 max-h-4' : 'opacity-60 max-h-3'}`}
-            style={{ 
-              color: subtleAccent,
-              fontSize: '9px',
-              letterSpacing: '0.05em'
-            }}
-          >
-            Tech Solutions
-          </div>
-        </div>
-      </div>
-      
-      {/* Clean hover indicator */}
-      <div 
-        className={`absolute -bottom-1 left-0 h-0.5 bg-gradient-to-r from-transparent via-orange-500 to-transparent
-          transition-all duration-300 rounded-full ${isHovered ? 'w-full opacity-100' : 'w-0 opacity-0'}`}
-      />
-    </div>
-  );
-};
-
-// New component for enhanced nav links
-const EnhancedNavLink: React.FC<{
-  to: string;
-  text: string;
-  theme: Theme;
-  isActive: boolean;
-  onClick?: () => void;
-}> = ({ to, text, theme, isActive, onClick }) => {
-  const navLinkText = theme === Theme.DARK ? 'text-gray-300' : 'text-gray-600';
-  const navLinkHoverBg = theme === Theme.DARK ? 'hover:bg-gray-800/60' : 'hover:bg-gray-100/60';
-  const activeClasses = isActive ? 
-    (theme === Theme.DARK ? 'bg-gray-800/80 text-orange-400' : 'bg-gray-100/80 text-orange-600') : '';
-
-  return (
-    <Link
-      to={to}
-      onClick={onClick}
-      className={`relative px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 whitespace-nowrap
-        ${navLinkText} ${navLinkHoverBg} hover:scale-105 backdrop-blur-sm
-        group overflow-hidden ${activeClasses}`}
-    >
-      <span className="relative z-10">{text}</span>
-      
-      {/* Enhanced hover gradient */}
-      <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 via-orange-400/20 to-orange-500/20 
-        opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" 
-        style={{
-          backgroundSize: '200% 100%',
-          animation: 'gradient-shift 3s ease infinite'
-        }}
-      />
-      
-      {/* Enhanced underline effect */}
-      <div className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-gradient-to-r from-orange-400 to-orange-600
-        group-hover:w-full group-hover:left-0 transition-all duration-300 rounded-full"
-        style={{
-          boxShadow: theme === Theme.DARK 
-            ? '0 0 8px rgba(249, 115, 22, 0.5)' 
-            : '0 0 5px rgba(249, 115, 22, 0.3)'
-        }}
-      />
-      
-      {/* Active indicator dot */}
-      {isActive && (
-        <div className="absolute -right-0.5 -top-0.5 w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"
-          style={{
-            boxShadow: '0 0 5px rgba(249, 115, 22, 0.8)'
-          }}
-        />
-      )}
-    </Link>
-  );
-};
-
 export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleChat, isChatOpen }) => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const location = useLocation();
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const location = useLocation();
+  const { targetLanguage, setTargetLanguage } = useLanguage();
 
   const navLinks = [
-    { to: '/', text: 'Home' },
-    { to: '/services', text: 'Services' },
-    { to: '/workshop', text: 'Workshop' },
-    { to: '/about', text: 'About' },
-    { to: '/generative-tools', text: 'AI Tools' }, // Added new link here
-    { to: '/contact', text: 'Contact Us' },
+    { text: 'Home', to: '/' },
+    { text: 'About', to: '/about' },
+    { text: 'Services', to: '/services' },
+    { text: 'Workshop', to: '/workshop' },
+    { text: 'Contact', to: '/contact' }
   ];
 
-  const accentColor = 'var(--accent-color)'; // Orange
-  
-  // Enhanced glassmorphism header with scroll effect
-  const headerBg = theme === Theme.DARK 
-    ? `${isScrolled ? 'bg-black/90' : 'bg-black/80'} backdrop-blur-xl border-b border-gray-800/50` 
-    : `${isScrolled ? 'bg-white/90' : 'bg-white/80'} backdrop-blur-xl border-b border-gray-200/50`;
-  
-  const headerText = theme === Theme.DARK ? 'text-white' : 'text-gray-900';
-
-  // Mobile menu styling with enhanced effects
-  const mobileMenuBg = theme === Theme.DARK 
-    ? 'bg-black/95 backdrop-blur-xl border border-gray-800/50' 
-    : 'bg-white/95 backdrop-blur-xl border border-gray-200/50';
-
-  // Handle scroll effects
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
     };
-    
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
-  // Close mobile menu when clicking outside
-  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
         setIsMobileMenuOpen(false);
       }
     };
 
-    if (isMobileMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
+    window.addEventListener('scroll', handleScroll);
+    document.addEventListener('mousedown', handleClickOutside);
 
     return () => {
+      window.removeEventListener('scroll', handleScroll);
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isMobileMenuOpen]);
+  }, []);
 
-  // Focus search input when opened
   useEffect(() => {
     if (isSearchOpen && searchInputRef.current) {
       searchInputRef.current.focus();
@@ -236,10 +92,24 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
     setIsSearchOpen(!isSearchOpen);
   };
 
+  const handleTranslatePage = async () => {
+    if (isTranslating) return;
+    
+    setIsTranslating(true);
+    const newLanguage = targetLanguage === 'en' ? 'no' : 'en';
+    setTargetLanguage(newLanguage);
+    
+    setTimeout(() => {
+      setIsTranslating(false);
+    }, 1000);
+  };
+
+  const headerText = theme === Theme.DARK ? 'text-white' : 'text-black';
+
   return (
     <>
       <header className={`sticky top-0 z-[60] transition-all duration-300 
-        ${headerBg} ${headerText} ${isScrolled ? 'py-2' : 'py-4'}`}>
+        ${headerText} ${isScrolled ? 'py-2' : 'py-4'}`}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             {/* Brand Logo */}
@@ -247,7 +117,7 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
               <TechFBCLogo theme={theme} />
             </Link>
 
-            {/* ADD THIS DESKTOP NAVIGATION SECTION */}
+            {/* Desktop Navigation */}
             <nav className="hidden md:flex flex-grow justify-center items-center space-x-1 lg:space-x-2 max-w-2xl mx-4">
               {navLinks.map(link => (
                 <Link
@@ -256,56 +126,48 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 relative
                     ${location.pathname === link.to
                       ? (theme === Theme.DARK 
-                        ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-lg shadow-orange-500/10' 
-                        : 'bg-orange-500/10 text-orange-600 border border-orange-500/20 shadow-lg shadow-orange-500/10')
+                        ? 'text-orange-400 border border-orange-500/30 shadow-lg shadow-orange-500/10' 
+                        : 'text-orange-600 border border-orange-500/20 shadow-lg shadow-orange-500/10')
                       : (theme === Theme.DARK 
-                        ? 'text-gray-300 hover:bg-gray-800/60 border border-transparent hover:border-gray-700/50' 
-                        : 'text-gray-700 hover:bg-gray-100/60 border border-transparent hover:border-gray-200/50')
+                        ? 'text-gray-300 border border-transparent hover:border-gray-700/50' 
+                        : 'text-gray-700 border border-transparent hover:border-gray-200/50')
                     }`}
                   onClick={closeMobileMenu}
                 >
                   {link.text}
                   {location.pathname === link.to && (
-                    <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-orange-500 rounded-full" />
+                    <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 rounded-full" />
                   )}
                 </Link>
               ))}
             </nav>
 
-            {/* Action Buttons (Search, Chat, Theme, Mobile Menu) */}
+            {/* Action Buttons */}
             <div className="flex items-center space-x-2">
-              {/* Search button - hidden on small screens */}
-              <button
+              {/* Search button */}
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={toggleSearch}
-                className={`hidden md:flex relative p-3 rounded-xl transition-all duration-300 items-center backdrop-blur-sm
-                  group hover:scale-110 active:scale-95 border
-                  ${theme === Theme.DARK 
-                    ? (isSearchOpen 
-                      ? 'bg-gray-800 text-orange-400 border-orange-500/50' 
-                      : 'text-gray-300 hover:bg-gray-800/60 border-gray-700/50')
-                    : (isSearchOpen 
-                      ? 'bg-gray-100 text-orange-600 border-orange-500/50' 
-                      : 'text-gray-700 hover:bg-gray-100/60 border-gray-200/50')
-                  }`}
+                className={cn(
+                  "hidden md:flex group",
+                  isSearchOpen && "text-orange-500"
+                )}
                 title="Search"
                 aria-label="Search"
               >
                 <Search size={18} className="transition-transform duration-300 group-hover:rotate-12" />
-              </button>
+              </Button>
 
-              {/* Chat button with enhanced effects */}
-              <button
+              {/* Chat button */}
+              <Button
+                variant={isChatOpen ? "primary" : "ghost"}
+                size="icon"
                 onClick={onToggleChat}
-                className={`relative p-3 rounded-xl transition-all duration-300 flex items-center backdrop-blur-sm
-                  group hover:scale-110 active:scale-95
-                  ${theme === Theme.DARK 
-                    ? (isChatOpen 
-                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25' 
-                      : 'text-gray-300 hover:bg-gray-800/60 border border-gray-700/50')
-                    : (isChatOpen 
-                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25' 
-                      : 'text-gray-700 hover:bg-gray-100/60 border border-gray-200/50')
-                  }`}
+                className={cn(
+                  "relative group",
+                  isChatOpen && "shadow-lg shadow-orange-500/25"
+                )}
                 title={isChatOpen ? "Close AI Assistant Panel" : "Open AI Assistant Panel"}
                 aria-label={isChatOpen ? "Close AI Assistant Panel" : "Open AI Assistant Panel"}
                 aria-expanded={isChatOpen}
@@ -313,55 +175,63 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
                 <MessageSquare size={18} className="transition-transform duration-300 group-hover:rotate-12" />
                 {isChatOpen && (
                   <>
-                    <div className="absolute inset-0 rounded-xl bg-orange-500 animate-ping opacity-20" />
-                    <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500 to-orange-400 opacity-20 animate-pulse" />
+                    <div className="absolute inset-0 rounded-xl animate-ping opacity-20" />
+                    <div className="absolute inset-0 rounded-xl opacity-20 animate-pulse" />
                   </>
                 )}
-              </button>
+              </Button>
 
-              {/* Enhanced theme toggle with animation */}
-              <button
+              {/* Theme toggle */}
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={onToggleTheme}
-                className={`relative p-3 rounded-xl transition-all duration-300 backdrop-blur-sm
-                  group hover:scale-110 active:scale-95 border overflow-hidden
-                  ${theme === Theme.DARK 
-                    ? 'text-gray-300 hover:bg-gray-800/60 border-gray-700/50' 
-                    : 'text-gray-700 hover:bg-gray-100/60 border-gray-200/50'}`}
+                className="group overflow-hidden"
                 title="Toggle Theme"
                 aria-label="Toggle Theme"
               >
                 <div className="transition-transform duration-500 group-hover:rotate-180">
                   {theme === Theme.DARK ? <Sun size={18} /> : <Moon size={18} />}
                 </div>
-              </button>
+              </Button>
 
-              {/* Mobile menu button - ONLY on mobile */}
-              <button 
+              {/* Translation Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleTranslatePage}
+                disabled={isTranslating}
+                title={targetLanguage === 'en' ? 'Translate to Norwegian' : 'Switch back to English'}
+              >
+                <Languages className={cn("w-5 h-5", isTranslating && "animate-pulse")} />
+              </Button>
+
+              {/* Mobile menu button */}
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={toggleMobileMenu}
-                className={`md:hidden relative p-3 rounded-xl transition-all duration-300 backdrop-blur-sm
-                group hover:scale-110 active:scale-95 border
-                ${theme === Theme.DARK 
-                  ? 'text-gray-300 hover:bg-gray-800/60 border-gray-700/50' 
-                  : 'text-gray-700 hover:bg-gray-100/60 border-gray-200/50'
-                } focus:outline-none focus:ring-2 focus:ring-orange-500/20`} 
+                className="md:hidden"
                 aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
                 aria-expanded={isMobileMenuOpen}
               >
                 <div className="transition-transform duration-300">
                   {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
                 </div>
-              </button>
+              </Button>
             </div>
           </div>
         </div>
         
-        {/* Enhanced search bar */}
+        {/* Search bar */}
         <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
           isSearchOpen ? 'max-h-16 opacity-100 py-3' : 'max-h-0 opacity-0 py-0'
         }`}>
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className={`flex items-center rounded-lg px-3 py-2 ${
-              theme === Theme.DARK ? 'bg-gray-800/80 border border-gray-700/50' : 'bg-gray-100/80 border border-gray-200/50'
+            <div className={`flex items-center rounded-lg px-3 py-2 backdrop-blur-md ${
+              theme === Theme.DARK 
+                ? 'bg-black/20 border border-gray-700/50' 
+                : 'bg-white/20 border border-gray-200/50'
             }`}>
               <Search size={18} className={theme === Theme.DARK ? 'text-gray-400' : 'text-gray-500'} />
               <input
@@ -372,57 +242,56 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
                   theme === Theme.DARK ? 'text-gray-200 placeholder-gray-500' : 'text-gray-800 placeholder-gray-400'
                 }`}
               />
-              <button 
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={toggleSearch}
-                className={`ml-2 ${theme === Theme.DARK ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
+                className="ml-2 h-6 w-6"
               >
-                <X size={18} />
-              </button>
+                <X size={16} />
+              </Button>
             </div>
           </div>
         </div>
-        
-        {/* Enhanced accent line with gradient and pulse effect */}
-        <div 
-          className="h-0.5 relative overflow-hidden"
-          style={{ backgroundColor: accentColor }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-orange-300 to-transparent opacity-50 animate-pulse" />
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-orange-500/30 to-transparent" />
-          <div 
-            className="absolute inset-0 bg-gradient-to-r from-orange-500 via-transparent to-orange-500"
-            style={{ 
-              backgroundSize: '200% 100%',
-              animation: 'gradient-shift 3s ease infinite'
-            }}
-          />
-        </div>
       </header>
 
-      {/* Fixed Mobile Menu - Replace your entire mobile menu section with this */}
+      {/* Mobile Menu */}
       <div
         ref={mobileMenuRef}
-        className="fixed top-0 right-0 h-full w-80 bg-white dark:bg-gray-900 shadow-xl"
-        style={{
-          transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 0.3s ease-in-out'
-        }}
+        className={`fixed top-0 right-0 h-full w-80 shadow-xl z-[70] transition-transform duration-300 ease-in-out backdrop-blur-xl border-l
+          ${theme === Theme.DARK 
+            ? 'bg-black/90 border-gray-700' 
+            : 'bg-white/90 border-gray-200'
+          }
+          ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-4 border-b">
+          <div className={`flex items-center justify-between p-4 border-b
+            ${theme === Theme.DARK ? 'border-gray-700' : 'border-gray-200'}`}>
             <TechFBCLogo theme={theme} />
-            <button onClick={closeMobileMenu} className="p-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={closeMobileMenu}
+            >
               <X size={20} />
-            </button>
+            </Button>
           </div>
 
-          <nav className="p-4">
+          <nav className="p-4 space-y-2">
             {navLinks.map(link => (
               <Link
                 key={link.text}
                 to={link.to}
                 onClick={closeMobileMenu}
-                className="block py-2"
+                className={`flex items-center py-3 px-4 rounded-lg transition-all duration-200 hover:scale-105
+                  ${location.pathname === link.to
+                    ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20'
+                    : `${theme === Theme.DARK 
+                        ? 'text-gray-300 hover:bg-white/5' 
+                        : 'text-gray-700 hover:bg-black/5'
+                      } border border-transparent`
+                  }`}
               >
                 {link.text}
               </Link>
@@ -431,22 +300,13 @@ export const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onToggleCh
         </div>
       </div>
 
-      {/* Fixed mobile menu backdrop */}
+      {/* Mobile menu backdrop */}
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-black/50"
+          className="fixed inset-0 z-[65]"
           onClick={closeMobileMenu}
         />
       )}
-
-      {/* Add enhanced keyframes */}
-      <style>{`
-        @keyframes gradient-shift {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-      `}</style>
     </>
   );
 };

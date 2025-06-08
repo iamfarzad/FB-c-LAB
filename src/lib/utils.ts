@@ -138,7 +138,6 @@ export function throttle<T extends (...args: any[]) => void>(
   };
 }
 
-
 /**
  * Generates a unique ID
  * @param prefix - Optional prefix for the ID
@@ -146,4 +145,19 @@ export function throttle<T extends (...args: any[]) => void>(
  */
 export function generateId(prefix = 'id'): string {
   return `${prefix}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+export function formatDate(date: Date): string {
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(date)
+}
+
+export function formatTime(date: Date): string {
+  return new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
 }

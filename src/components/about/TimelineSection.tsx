@@ -1,7 +1,7 @@
-
 import React from 'react';
-import { Theme } from '../../../types';
+import { Theme } from '@/types';
 import { Calendar, Milestone } from 'lucide-react';
+import styles from './TimelineSection.module.css';
 
 interface TimelineSectionProps {
   theme: Theme;
@@ -44,7 +44,7 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({ theme }) => {
       <div className="absolute inset-0 overflow-hidden">
         <div className={`absolute top-1/4 right-1/4 w-80 h-80 rounded-full blur-3xl opacity-4 ${
           theme === Theme.DARK ? 'bg-orange-500' : 'bg-orange-400'
-        } animate-drift-vertical`} />
+        } ${styles['animate-drift-vertical']}`} />
         <div className={`absolute inset-0 opacity-[0.01] ${
           theme === Theme.DARK ? 'bg-white' : 'bg-black'
         }`} 
@@ -133,16 +133,6 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({ theme }) => {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes drift-vertical {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-30px); }
-        }
-        .animate-drift-vertical {
-          animation: drift-vertical 10s ease-in-out infinite;
-        }
-      `}</style>
     </section>
   );
 };

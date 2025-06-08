@@ -1,7 +1,6 @@
-
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Theme } from '../types'; // Assuming Theme enum is here
 import { GoogleGenAI } from "@google/genai"; // For Gemini API calls
+*/
 
 declare global {
   interface Window {
@@ -9,17 +8,12 @@ declare global {
   }
 }
 
-interface AdminWorkshopPageProps {
-  theme: Theme; // Main app theme, workshop page has its own fixed theme
-}
-
-export const AdminWorkshopPage: React.FC<AdminWorkshopPageProps> = ({ theme }) => {
+export const AdminWorkshopPage: React.FC = () => {
   const evolutionChartRef = useRef<HTMLCanvasElement>(null);
   const costSpeedChartRef = useRef<HTMLCanvasElement>(null);
   let evolutionChartInstance: any = null;
   let costSpeedChartInstance: any = null;
 
-  const [activeTab, setActiveTab] = useState('welcome');
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
   // State for AI Task Planner
@@ -55,27 +49,7 @@ export const AdminWorkshopPage: React.FC<AdminWorkshopPageProps> = ({ theme }) =
     }
   }, []);
 
-
-  const handleSetActiveTab = useCallback((tabName: string) => {
-    setActiveTab(tabName);
-    document.querySelectorAll('.content-section').forEach(section => {
-        section.classList.toggle('active', section.id === tabName);
-    });
-    document.querySelectorAll('.tab-button').forEach(button => {
-        const htmlButton = button as HTMLButtonElement;
-        if (htmlButton.dataset.tab === tabName) {
-            htmlButton.classList.add('active', 'text-sky-600', 'border-sky-600', 'font-semibold');
-            htmlButton.classList.remove('text-slate-600', 'border-transparent');
-        } else {
-            htmlButton.classList.remove('active', 'text-sky-600', 'border-sky-600', 'font-semibold');
-            htmlButton.classList.add('text-slate-600', 'border-transparent');
-        }
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
-
   useEffect(() => {
-    handleSetActiveTab('welcome'); 
     setCurrentYear(new Date().getFullYear());
 
     contentSectionsRef.current = document.querySelectorAll('.content-section');
@@ -92,7 +66,6 @@ export const AdminWorkshopPage: React.FC<AdminWorkshopPageProps> = ({ theme }) =
         button.addEventListener('click', () => {
             const tabName = button.dataset.tab;
             if (tabName) {
-                handleSetActiveTab(tabName);
                 if (mobileMenuRef.current && !mobileMenuRef.current.classList.contains('hidden')) {
                     mobileMenuRef.current.classList.add('hidden');
                 }
@@ -225,7 +198,7 @@ export const AdminWorkshopPage: React.FC<AdminWorkshopPageProps> = ({ theme }) =
       if (costSpeedChartInstance) costSpeedChartInstance.destroy();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handleSetActiveTab]); 
+  }, []); // --- THIS IS THE FIX ---
 
 
   const callWorkshopGeminiAPI = useCallback(async (promptText: string, outputSetter: React.Dispatch<React.SetStateAction<string>>, loadingSetter: React.Dispatch<React.SetStateAction<boolean>>) => {
@@ -236,12 +209,14 @@ export const AdminWorkshopPage: React.FC<AdminWorkshopPageProps> = ({ theme }) =
     outputSetter('');
     loadingSetter(true);
     try {
-        const response = await aiRef.current.models.generateContent({
-            model: 'gemini-2.5-flash-preview-04-17', 
-            contents: [{ role: "user", parts: [{ text: promptText }] }]
-        });
-        const text = response.text || '';
+        const model = aiRef.current.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const result = await model.generateContent(promptText);
+        const response = await result.response;
+        const text = response.text() || '';
         outputSetter(formatGeminiResponseForWorkshop(text));
+    } catch (error) {
+        console.error('Error generating content:', error);
+    }
 
     } catch (error: any) {
         outputSetter(`<p class="text-red-500">Error: ${error.message}. Failed to connect to the AI.</p>`);
@@ -445,9 +420,9 @@ export const AdminWorkshopPage: React.FC<AdminWorkshopPageProps> = ({ theme }) =
         const metrics = selectedModels.map(modelName => {
             const model = modelData.find(m => m.name === modelName);
             if (!model) return null;
-            const totalTokens = currentInputTokens + currentOutputTokens;
-            const inferenceTime = currentOutputTokens / model.tokensPerSecond; // Assuming output tokens determine speed
-            const totalCost = ((currentInputTokens * model.costPer1KTokens) / 1000) + ((currentOutputTokens * model.costPer1KTokens) / 1000); // Example, needs to use specific input/output costs if they differ. For simplicity, using same cost rate.
+            // --- THIS IS THE FIX ---
+            const inferenceTime = currentOutputTokens / model.tokensPerSecond; 
+            const totalCost = ((currentInputTokens * model.costPer1KTokens) / 1000) + ((currentOutputTokens * model.costPer1KTokens) / 1000);
             return { ...model, inferenceTime, totalCost };
         }).filter(Boolean);
 
@@ -544,9 +519,9 @@ export const AdminWorkshopPage: React.FC<AdminWorkshopPageProps> = ({ theme }) =
   `;
 
   return (
-    <div className="bg-slate-50 text-slate-800 min-h-screen">
+    <div className="bg-slate-50 min-h-screen font-sans">
       <style>{workshopStyles}</style>
-      <header className="bg-white shadow-sm sticky top-0 z-50 border-b border-slate-200">
+      <header className="bg-white shadow-md w-full sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
                 <div className="flex items-center">
@@ -617,7 +592,7 @@ export const AdminWorkshopPage: React.FC<AdminWorkshopPageProps> = ({ theme }) =
                         <div className="text-center md:text-left">
                             <h4 className="text-xl font-bold text-sky-700 mb-2">Farzad Bayat: Self-Taught. Results-Focused. AI That Actually Works.</h4>
                             <p className="text-base text-slate-700 mb-3 leading-relaxed">
-                                I’m Farzad Bayat—AI consultant, builder, and systems thinker. I don’t just talk about AI. I build it, test it, and use it.
+                                I'm Farzad Bayat—AI consultant, builder, and systems thinker. I don't just talk about AI. I build it, test it, and use it.
                             </p>
                             <ul className="list-disc list-inside space-y-1 text-sm text-slate-600 pl-4 leading-normal">
                                 <li>Self-taught AI builder since 2020.</li>
@@ -966,7 +941,6 @@ export const AdminWorkshopPage: React.FC<AdminWorkshopPageProps> = ({ theme }) =
                     </div>
                 </div>
             </div>
-        </div>
         </section>
 
         <section id="part2" className="content-section">
@@ -1026,7 +1000,7 @@ export const AdminWorkshopPage: React.FC<AdminWorkshopPageProps> = ({ theme }) =
     </main>
 
     <footer className="bg-slate-100 mt-12 py-8 text-center border-t border-slate-200">
-        <p className="text-sm text-slate-500">&copy; <span id="currentYear">{currentYear}</span> AI Workshop Interactive Guide by F.B/c. All rights reserved.</p>
+        <p className="text-sm text-slate-500">© <span id="currentYear">{currentYear}</span> AI Workshop Interactive Guide by F.B/c. All rights reserved.</p>
     </footer>
     </div>
   );

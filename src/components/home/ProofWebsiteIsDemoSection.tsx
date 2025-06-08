@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Theme } from '../../../types';
+import { Theme } from '@/types';
 // Background pattern is now handled by Layout component
 import { Code, Server, Database, ArrowRight } from 'lucide-react';
 
@@ -49,7 +48,7 @@ export const ProofWebsiteIsDemoSection: React.FC<ProofWebsiteIsDemoSectionProps>
     <section 
       id="proof-section"
       className={`relative py-24 lg:py-32 transition-all duration-700 overflow-hidden
-        ${theme === Theme.DARK ? 'bg-black' : 'bg-white'}`}
+        ${theme === Theme.DARK ? '' : ''}`}
     >
       {/* Background pattern is handled by Layout component */}
       <div className="container mx-auto px-6 relative z-10">
@@ -77,8 +76,8 @@ export const ProofWebsiteIsDemoSection: React.FC<ProofWebsiteIsDemoSectionProps>
                 key={index}
                 className={`p-6 border transition-all duration-300
                   ${theme === Theme.DARK 
-                    ? 'border-white/10 bg-black/20' 
-                    : 'border-black/10 bg-white/20'
+                    ? 'border-white/10' 
+                    : 'border-black/10'
                   } backdrop-blur-xl`}
                 style={{ animationDelay: `${0.2 + feature.delay}s` }}
               >
@@ -104,8 +103,8 @@ export const ProofWebsiteIsDemoSection: React.FC<ProofWebsiteIsDemoSectionProps>
                style={{ animationDelay: '0.4s' }}>
             <div className={`p-4 font-mono text-sm overflow-x-auto ${
               theme === Theme.DARK 
-                ? 'bg-gray-900 text-gray-300 border border-gray-800' 
-                : 'bg-gray-100 text-gray-800 border border-gray-200'
+                ? 'text-gray-300 border border-gray-800' 
+                : 'text-gray-800 border border-gray-200'
             }`}>
               <pre><code>{`// Example of AI integration
 import * as GeminiService from '../../../services/geminiService';
@@ -145,23 +144,6 @@ const handleUserMessage = async (message: string) => {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes fade-in-up {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in-up {
-          animation: fade-in-up 0.8s ease-out forwards;
-        }
-      `}</style>
     </section>
   );
 };

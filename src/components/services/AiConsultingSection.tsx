@@ -1,14 +1,7 @@
-
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle, Users, DollarSign } from 'lucide-react';
-import { Theme } from '../../../types';
 
-interface AiConsultingSectionProps {
-  theme: Theme;
-}
-
-export const AiConsultingSection: React.FC<AiConsultingSectionProps> = ({ theme }) => {
+export function AiConsultingSection() {
   const helpItems = [
     "Build internal chatbots connected to company data",
     "Automate customer service, HR, and operations tasks",
@@ -25,32 +18,32 @@ export const AiConsultingSection: React.FC<AiConsultingSectionProps> = ({ theme 
   const accentColor = 'var(--accent-color)'; // Orange
 
   return (
-    <section className={`py-16 md:py-24 transition-colors duration-300 ${theme === Theme.DARK ? 'bg-gray-950 text-white' : 'bg-white text-gray-900'}`}>
+    <section className="py-16 md:py-24 transition-colors duration-300">
       <div className="container mx-auto px-6">
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">AI Consulting</h2>
-        <p className={`text-lg md:text-xl text-center max-w-3xl mx-auto mb-12 ${theme === Theme.DARK ? 'text-gray-300' : 'text-gray-600'}`}>
+        <p className="text-lg md:text-xl text-center max-w-3xl mx-auto mb-12">
           Hands-on help for companies that want to use AI to cut costs, save time, and improve accuracy.
         </p>
 
         <div className="grid md:grid-cols-2 gap-10 mb-12">
-          <div className={`${theme === Theme.DARK ? 'bg-gray-900' : 'bg-gray-50'} p-6 rounded-lg shadow-md`}>
+          <div className="p-6 rounded-lg shadow-md">
             <h3 className="text-xl font-semibold mb-4" style={{ color: accentColor }}>What I help with:</h3>
             <ul className="space-y-3">
               {helpItems.map((item, index) => (
                 <li key={index} className="flex items-start">
                   <CheckCircle size={20} className="text-green-500 mr-3 mt-0.5 shrink-0" />
-                  <span className={`${theme === Theme.DARK ? 'text-gray-300' : 'text-gray-700'}`}>{item}</span>
+                  <span>{item}</span>
                 </li>
               ))}
             </ul>
           </div>
-          <div className={`${theme === Theme.DARK ? 'bg-gray-900' : 'bg-gray-50'} p-6 rounded-lg shadow-md`}>
+          <div className="p-6 rounded-lg shadow-md">
             <h3 className="text-xl font-semibold mb-4" style={{ color: accentColor }}>Good for:</h3>
             <ul className="space-y-3">
               {goodForItems.map((item, index) => (
                 <li key={index} className="flex items-start">
                   <Users size={20} className="mr-3 mt-0.5 shrink-0" style={{ color: accentColor }} />
-                  <span className={`${theme === Theme.DARK ? 'text-gray-300' : 'text-gray-700'}`}>{item}</span>
+                  <span>{item}</span>
                 </li>
               ))}
             </ul>
@@ -60,7 +53,7 @@ export const AiConsultingSection: React.FC<AiConsultingSectionProps> = ({ theme 
         <div className="text-center">
           <Link
             to="/contact" 
-            className="inline-flex items-center justify-center bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-8 rounded-lg text-md md:text-lg transition-transform duration-300 ease-in-out hover:scale-105 shadow-md"
+            className="inline-flex items-center justify-center font-semibold py-3 px-8 rounded-lg text-md md:text-lg transition-transform duration-300 ease-in-out hover:scale-105"
           >
              Request a Custom Quote <DollarSign size={20} className="ml-2" />
           </Link>

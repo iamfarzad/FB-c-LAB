@@ -1,8 +1,6 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Theme } from '../../../types';
-import { FlickeringGrid } from '../ui/FlickeringGrid';
+import { Theme } from '@/types';
 import { ArrowRight, MessageCircle } from 'lucide-react';
 
 interface AboutFinalCTASectionProps {
@@ -13,33 +11,8 @@ interface AboutFinalCTASectionProps {
 export const AboutFinalCTASection: React.FC<AboutFinalCTASectionProps> = ({ theme, onToggleChat }) => {
   return (
     <section 
-      className={`relative py-32 lg:py-40 text-center transition-all duration-300 overflow-hidden
-        ${theme === Theme.DARK ? 'bg-black' : 'bg-white'}`}
+      className={`relative py-32 lg:py-40 text-center transition-all duration-300 overflow-hidden`}
     >
-      {/* Sophisticated background */}
-      <div className="absolute inset-0">
-        <FlickeringGrid
-          className="absolute inset-0 z-0"
-          squareSize={2}
-          gridGap={18}
-          maxOpacity={0.05}
-          flickerChance={0.006}
-          width={1920}
-          height={1080}
-          theme={theme === Theme.DARK ? 'dark' : 'light'}
-          blur={2}
-        />
-        
-        <div 
-          className="absolute inset-0 z-10"
-          style={{
-            background: theme === Theme.DARK 
-              ? 'radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.8) 80%)' 
-              : 'radial-gradient(circle at center, transparent 30%, rgba(255,255,255,0.8) 80%)'
-          }}
-        />
-      </div>
-
       <div className="container mx-auto px-6 relative z-20">
         <div className="max-w-3xl mx-auto">
           {/* Clean, professional typography */}

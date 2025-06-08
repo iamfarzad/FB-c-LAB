@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Theme } from '../../../types';
+import { Theme } from '@/types';
 import { Star, Quote, Users } from 'lucide-react';
 
 interface TestimonialsAboutSectionProps {
@@ -112,23 +111,6 @@ export const TestimonialsAboutSection: React.FC<TestimonialsAboutSectionProps> =
           ))}
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.03; }
-          50% { opacity: 0.06; }
-        }
-        @keyframes pulse-slow-reverse {
-          0%, 100% { opacity: 0.04; }
-          50% { opacity: 0.02; }
-        }
-        .animate-pulse-slow {
-          animation: pulse-slow 8s ease-in-out infinite;
-        }
-        .animate-pulse-slow-reverse {
-          animation: pulse-slow-reverse 10s ease-in-out infinite;
-        }
-      `}</style>
     </section>
   );
 };

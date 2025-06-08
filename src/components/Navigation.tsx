@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/router';
-import Link from 'next/link';
+import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Theme } from '../contexts/ThemeContext';
@@ -34,21 +33,16 @@ export function Navigation({
   items, // This will be passed from the parent component (e.g., Header or Layout)
   onNavigate,
 }: Omit<NavigationProps, 'theme'>) {
-  const router = useRouter();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
   const navRef = useRef<HTMLDivElement>(null);
 
   // Close mobile menu when route changes
   useEffect(() => {
-    const handleRouteChange = () => {
-      setIsOpen(false);
-      onNavigate?.();
-    };
-
-    router.events.on('routeChangeStart', handleRouteChange);
-    return () => router.events.off('routeChangeStart', handleRouteChange);
-  }, [router.events, onNavigate]);
+    setIsOpen(false);
+    onNavigate?.();
+  }, [location, onNavigate]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -68,8 +62,8 @@ export function Navigation({
   };
 
   const isActive = (href: string) => {
-    return router.pathname === href || 
-           (href !== '/' && router.pathname.startsWith(href));
+    return location.pathname === href || 
+           (href !== '/' && location.pathname.startsWith(href));
   };
 
   const renderNavItem = (item: NavigationItem, isMobile = false) => {
@@ -79,8 +73,8 @@ export function Navigation({
     const baseClasses = cn(
       'flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200',
       isItemActive 
-        ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-100'
-        : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800',
+        ? 'text-primary-700 dark:text-primary-100'
+        : 'text-gray-700 dark:text-gray-300',
       isMobile ? 'w-full text-left' : ''
     );
 
@@ -109,15 +103,15 @@ export function Navigation({
             
             {/* Desktop Dropdown */}
             {!isMobile && (
-              <div className="absolute left-0 mt-1 w-56 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="absolute left-0 mt-1 w-56 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="py-1">
                   {item.children?.map((child) => (
                     <Link
                       key={child.name}
-                      href={child.href}
+                      to={child.href}
                       className={cn(
-                        'block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
-                        isActive(child.href) && 'bg-gray-100 dark:bg-gray-700'
+                        'block px-4 py-2 text-sm text-gray-700 dark:text-gray-300',
+                        isActive(child.href) && ''
                       )}
                     >
                       {child.name}
@@ -138,7 +132,7 @@ export function Navigation({
                 {item.children?.map((child) => (
                   <Link
                     key={child.name}
-                    href={child.href}
+                    to={child.href}
                     className={cn(
                       'block py-2 pl-6 text-sm rounded-md',
                       isActive(child.href)
@@ -154,7 +148,7 @@ export function Navigation({
           </>
         ) : (
           <Link
-            href={item.href}
+            to={item.href}
             className={baseClasses}
             onClick={() => isMobile && setIsOpen(false)}
           >
@@ -172,7 +166,7 @@ export function Navigation({
       <div className="flex items-center md:hidden">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none"
+          className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 dark:text-gray-300 focus:outline-none"
           aria-expanded={isOpen}
         >
           <span className="sr-only">Open main menu</span>
@@ -192,7 +186,7 @@ export function Navigation({
       {/* Mobile Navigation */}
       <div
         className={cn(
-          'md:hidden absolute top-full left-0 right-0 bg-white dark:bg-gray-900 shadow-lg rounded-b-lg overflow-hidden transition-all duration-300',
+          'md:hidden absolute top-full left-0 right-0 shadow-lg rounded-b-lg overflow-hidden transition-all duration-300',
           isOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0',
           'z-40'
         )}

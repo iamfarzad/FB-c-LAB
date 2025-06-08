@@ -1,0 +1,18 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# BugBot Workflow
+
+To get an AI code review on a pull request, comment on the PR with:
+
+```
+bugbot run
+```
+
+For more detailed logs, especially for troubleshooting, use:
+
+```
+bugbot run verbose=true
+```

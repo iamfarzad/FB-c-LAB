@@ -1,102 +1,125 @@
+import { useState, useEffect } from 'react';
+import { CheckCircle, Brain, Code } from 'lucide-react';
 
-import React from 'react';
-import { Theme } from '../../../types';
-import { Lightbulb, CheckCircle, BookOpen, Wrench, Users, MapPin } from 'lucide-react';
+export function WhatToExpectSection() {
+  const [isVisible, setIsVisible] = useState(false);
 
-interface WhatToExpectSectionProps {
-  theme: Theme;
-}
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+        }
+      },
+      { threshold: 0.1 }
+    );
 
-export const WhatToExpectSection: React.FC<WhatToExpectSectionProps> = ({ theme }) => {
+    const element = document.getElementById('what-to-expect');
+    if (element) observer.observe(element);
+
+    return () => observer.disconnect();
+  }, []);
+
   const workshopFormatDetails = [
-    "3 hours theory: What LLMs are, how they work, risks, limitations, and architecture basics.",
-    "3 hours hands-on: Build a chatbot, automate a task, or create your own internal assistant using tools like ChatGPT, Claude, Gemini, and LangChain."
+    {
+      icon: Brain,
+      title: "Theory Foundation",
+      description: "3 hours: What LLMs are, how they work, risks, limitations, and architecture basics.",
+    },
+    {
+      icon: Code,
+      title: "Hands-On Building",
+      description: "3 hours: Build a chatbot, automate a task, or create your own internal assistant.",
+    }
   ];
 
   const toolsCovered = [
     "ChatGPT / OpenAI", "Claude / Anthropic", "Google Gemini", 
-    "Microsoft Copilot", "LangChain, Chroma, Supabase, Zapier"
+    "Microsoft Copilot", "LangChain", "Chroma", "Supabase", "Zapier"
   ];
 
-  const deliveryOptions = [
-    "On-site (Norway + Europe)", 
-    "Remote (Global)", 
-    "Includes templates, walkthroughs, sample prompts, and optional follow-up support"
+  const keyBenefits = [
+    "No prior coding or AI experience required",
+    "Clear explanations of how prompts, tokens, context windows, and APIs actually function",
+    "You'll leave knowing how to troubleshoot basic AI issues on your own"
   ];
-  const accentColor = 'var(--accent-color)';
 
   return (
-    <section className={`py-16 md:py-24 transition-colors duration-300 ${theme === Theme.DARK ? 'bg-black text-white' : 'bg-gray-50 text-gray-900'}`}>
-      <div className="container mx-auto px-6">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-8">What to Expect</h2>
-          <p className={`text-lg mb-6 ${theme === Theme.DARK ? 'text-gray-300' : 'text-gray-700'}`}>
-            These workshops are built from real-world experience—not theory. Every session is designed to give your team a working understanding of AI and the ability to build practical tools by the end of the day.
-          </p>
-          <p className={`text-lg mb-10 ${theme === Theme.DARK ? 'text-gray-300' : 'text-gray-700'}`}>
-            Most AI tools fail in companies not because the technology is bad—but because the team doesn't understand how they work. These workshops start from the ground up:
-          </p>
-          <ul className={`space-y-3 mb-10 text-lg ${theme === Theme.DARK ? 'text-gray-300' : 'text-gray-700'}`}>
-            <li className="flex items-start">
-              <CheckCircle size={24} className="text-green-500 mr-3 mt-1 shrink-0" />
-              No prior coding or AI experience required
-            </li>
-            <li className="flex items-start">
-              <CheckCircle size={24} className="text-green-500 mr-3 mt-1 shrink-0" />
-              Clear explanations of how prompts, tokens, context windows, and APIs actually function
-            </li>
-            <li className="flex items-start">
-              <CheckCircle size={24} className="text-green-500 mr-3 mt-1 shrink-0" />
-              You’ll leave knowing how to troubleshoot basic AI issues on your own
-            </li>
-          </ul>
-          <p className={`text-lg font-semibold mb-12 text-center italic ${theme === Theme.DARK ? 'text-orange-400' : 'text-orange-600'}`}>
-            If you don't understand the core terms, debugging an AI problem is a nightmare. This training removes that barrier.
-          </p>
+    <section 
+      id="what-to-expect"
+      className="py-24 md:py-32 transition-colors duration-300 relative"
+    >
+      <div className="container mx-auto px-6 relative z-10">
+        <div className="max-w-6xl mx-auto">
+          
+          {/* Section Header */}
+          <div className={`text-center mb-20 ${isVisible ? 'animate-fade-in-up' : 'opacity-0'}`}>
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-light mb-6 tracking-tight">
+              What to <span className="font-medium text-orange-500">Expect</span>
+            </h2>
+            <div className="w-24 h-px bg-orange-500 mx-auto mb-8" />
+            <p className="text-xl sm:text-2xl max-w-4xl mx-auto leading-relaxed font-light">
+              Built from real-world experience—not theory. Every session gives your team working knowledge 
+              and the ability to build practical tools.
+            </p>
+          </div>
 
-          <div className="grid md:grid-cols-1 gap-8">
-            <div className={`p-6 rounded-lg shadow-lg ${theme === Theme.DARK ? 'bg-gray-800' : 'bg-white'}`}>
-              <div className="flex items-center mb-4">
-                <BookOpen size={28} className="mr-3" style={{color: accentColor}} />
-                <h3 className="text-2xl font-semibold">Workshop Format</h3>
-              </div>
-              <ul className="space-y-2">
-                {workshopFormatDetails.map((item, index) => (
-                  <li key={index} className={`flex items-start ${theme === Theme.DARK ? 'text-gray-300' : 'text-gray-700'}`}>
-                    <Lightbulb size={20} className={`mr-2 mt-1 shrink-0 ${theme === Theme.DARK ? 'text-yellow-400' : 'text-yellow-500'}`} />
-                    {item}
-                  </li>
-                ))}
-              </ul>
+          {/* Key Message */}
+          <div className={`text-center mb-16 ${isVisible ? 'animate-fade-in-up' : 'opacity-0'}`}
+               style={{ animationDelay: '0.2s' }}>
+            <div className="max-w-4xl mx-auto">
+              <p className="text-lg font-medium italic text-orange-700">
+                "Most AI tools fail in companies not because the technology is bad—but because the team doesn't understand how they work."
+              </p>
             </div>
+          </div>
 
-            <div className={`p-6 rounded-lg shadow-lg ${theme === Theme.DARK ? 'bg-gray-800' : 'bg-white'}`}>
-              <div className="flex items-center mb-4">
-                <Wrench size={28} className="mr-3" style={{color: accentColor}} />
-                <h3 className="text-2xl font-semibold">Tools Covered</h3>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {toolsCovered.map((tool, index) => (
-                  <span key={index} className={`px-3 py-1 rounded-full text-sm font-medium ${theme === Theme.DARK ? 'bg-gray-700 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>
-                    {tool}
-                  </span>
-                ))}
-              </div>
+          {/* Key Benefits */}
+          <div className={`mb-20 ${isVisible ? 'animate-fade-in-up' : 'opacity-0'}`}
+               style={{ animationDelay: '0.3s' }}>
+            <div className="space-y-6 max-w-4xl mx-auto">
+              {keyBenefits.map((benefit, index) => (
+                <div key={index} className="flex items-start space-x-4">
+                  <CheckCircle size={24} className="text-green-500 mt-1 flex-shrink-0" />
+                  <p className="text-lg">
+                    {benefit}
+                  </p>
+                </div>
+              ))}
             </div>
+          </div>
 
-            <div className={`p-6 rounded-lg shadow-lg ${theme === Theme.DARK ? 'bg-gray-800' : 'bg-white'}`}>
-              <div className="flex items-center mb-4">
-                <MapPin size={28} className="mr-3" style={{color: accentColor}} />
-                <h3 className="text-2xl font-semibold">Delivery Options</h3>
+          {/* Workshop Format */}
+          <div className={`grid lg:grid-cols-2 gap-12 mb-20 ${isVisible ? 'animate-fade-in-up' : 'opacity-0'}`}
+               style={{ animationDelay: '0.4s' }}>
+            {workshopFormatDetails.map((item, index) => (
+              <div key={index} className="text-center lg:text-left">
+                <div className="flex items-center justify-center lg:justify-start mb-6">
+                  <item.icon size={32} className="text-orange-500 mr-4" />
+                  <h3 className="text-2xl font-semibold">
+                    {item.title}
+                  </h3>
+                </div>
+                <p className="text-lg leading-relaxed">
+                  {item.description}
+                </p>
               </div>
-              <ul className="space-y-2">
-                {deliveryOptions.map((item, index) => (
-                  <li key={index} className={`flex items-start ${theme === Theme.DARK ? 'text-gray-300' : 'text-gray-700'}`}>
-                    <CheckCircle size={20} className="text-green-500 mr-2 mt-1 shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
+            ))}
+          </div>
+
+          {/* Tools Covered */}
+          <div className={`text-center ${isVisible ? 'animate-fade-in-up' : 'opacity-0'}`}
+               style={{ animationDelay: '0.5s' }}>
+            <h3 className="text-3xl font-semibold mb-8">
+              Tools & Technologies Covered
+            </h3>
+            <div className="flex flex-wrap justify-center gap-4 max-w-4xl mx-auto">
+              {toolsCovered.map((tool, index) => (
+                <span key={index} 
+                      className="px-6 py-3 rounded-full text-sm font-medium bg-orange-100 text-orange-700">
+                  {tool}
+                </span>
+              ))}
             </div>
           </div>
         </div>

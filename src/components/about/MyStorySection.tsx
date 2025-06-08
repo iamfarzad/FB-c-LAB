@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Theme } from '../../../types';
+import { Theme } from '@/types';
 import { ArrowRight, Quote } from 'lucide-react';
 
 interface MyStorySectionProps {
@@ -70,31 +69,6 @@ export const MyStorySection: React.FC<MyStorySectionProps> = ({ theme, onReadFul
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes pulse-gentle {
-          0%, 100% { opacity: 0.03; }
-          50% { opacity: 0.06; }
-        }
-        @keyframes fade-in-up {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-pulse-gentle {
-          animation: pulse-gentle 8s ease-in-out infinite;
-        }
-        .animate-fade-in-up {
-          animation: fade-in-up 0.8s ease-out forwards;
-        }
-        .animate-fade-in-up-delay {
-          animation: fade-in-up 0.8s ease-out 0.2s forwards;
-          opacity: 0;
-        }
-        .animate-fade-in-up-delay-2 {
-          animation: fade-in-up 0.8s ease-out 0.4s forwards;
-          opacity: 0;
-        }
-      `}</style>
     </section>
   );
 };

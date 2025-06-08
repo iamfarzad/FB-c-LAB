@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Theme } from '../../../types';
+import { Theme } from '@/types';
 // Background pattern is now handled by Layout component
 import { ArrowRight } from 'lucide-react';
 
@@ -71,8 +71,8 @@ export const WhatIOfferSection: React.FC<WhatIOfferSectionProps> = ({ theme }) =
                 {/* Clean service card */}
                 <div className={`relative h-full p-8 border transition-all duration-300 hover:scale-[1.02]
                   ${theme === Theme.DARK 
-                    ? 'border-white/10 hover:border-white/20 bg-black/20' 
-                    : 'border-black/10 hover:border-black/20 bg-white/20'
+                    ? 'border-white/10 hover:border-white/20' 
+                    : 'border-black/10 hover:border-black/20'
                   } backdrop-blur-xl`}
                 >
                   {/* Service content */}
@@ -131,23 +131,6 @@ export const WhatIOfferSection: React.FC<WhatIOfferSectionProps> = ({ theme }) =
           </p>
         </div>
       </div>
-
-      <style>{`
-        @keyframes fade-in-up {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in-up {
-          animation: fade-in-up 0.8s ease-out forwards;
-        }
-      `}</style>
     </section>
   );
 };

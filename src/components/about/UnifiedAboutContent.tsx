@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Theme } from '../../../types';
-import { FlickeringGrid } from '../ui/FlickeringGrid';
+import { Theme } from '@/types';
 import { 
   ArrowRight, 
   CheckCircle, 
   Code, 
-  Calendar, 
   Star, 
-  Users,
   Brain,
   Music,
   Edit3,
@@ -15,12 +12,10 @@ import {
   Zap,
   Bot,
   Database,
-  GitFork,
   Layers,
   Settings,
   FlaskConical,
   Check,
-  Filter
 } from 'lucide-react';
 
 interface UnifiedAboutContentProps {
@@ -124,32 +119,14 @@ export const UnifiedAboutContent: React.FC<UnifiedAboutContentProps> = ({ theme,
   return (
     <section 
       id="unified-about-content"
-      className={`relative py-24 lg:py-32 transition-all duration-700 overflow-hidden
-        ${theme === Theme.DARK ? 'bg-black' : 'bg-white'}`}
+      className={`relative py-24 lg:py-32 transition-all duration-700 overflow-hidden`}
     >
-      {/* Sophisticated background */}
-      <div className="absolute inset-0">
-        <FlickeringGrid
-          className="absolute inset-0 z-0"
-          squareSize={2}
-          gridGap={20}
-          maxOpacity={0.04}
-          flickerChance={0.005}
-          width={1920}
-          height={1080}
-          theme={theme === Theme.DARK ? 'dark' : 'light'}
-          blur={2}
-        />
-      </div>
-
       <div className="container mx-auto px-6 relative z-10 space-y-32">
         
         {/* My Story & How I Work - Combined */}
         <div className={`max-w-6xl mx-auto ${isVisible ? 'animate-fade-in-up' : 'opacity-0'}`}>
           <div className="text-center mb-16">
-            <h2 className={`text-4xl md:text-5xl lg:text-6xl font-light mb-6 tracking-tight ${
-              theme === Theme.DARK ? 'text-white' : 'text-black'
-            }`}>
+            <h2 className={`text-4xl md:text-5xl lg:text-6xl font-light mb-6 tracking-tight`}>
               My story & approach
             </h2>
             <div className="w-16 h-px bg-orange-500 mx-auto" />
@@ -158,18 +135,14 @@ export const UnifiedAboutContent: React.FC<UnifiedAboutContentProps> = ({ theme,
           <div className="grid lg:grid-cols-2 gap-16">
             {/* Story highlights */}
             <div>
-              <h3 className={`text-2xl font-medium mb-8 ${
-                theme === Theme.DARK ? 'text-white' : 'text-black'
-              }`}>
+              <h3 className={`text-2xl font-medium mb-8`}>
                 The journey
               </h3>
               <div className="space-y-6">
                 {storyHighlights.map((highlight, index) => (
                   <div key={index} className="flex items-start gap-3">
                     <div className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0 mt-2" />
-                    <p className={`text-base font-light ${
-                      theme === Theme.DARK ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
+                    <p className={`text-base font-light`}>
                       {highlight}
                     </p>
                   </div>
@@ -177,8 +150,7 @@ export const UnifiedAboutContent: React.FC<UnifiedAboutContentProps> = ({ theme,
               </div>
               <button
                 onClick={onReadFullStory}
-                className={`mt-8 inline-flex items-center gap-2 text-sm font-medium transition-colors
-                  ${theme === Theme.DARK ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-black'}`}
+                className={`mt-8 inline-flex items-center gap-2 text-sm font-medium transition-colors`}
               >
                 Read full story
                 <ArrowRight size={14} />
@@ -187,29 +159,23 @@ export const UnifiedAboutContent: React.FC<UnifiedAboutContentProps> = ({ theme,
 
             {/* Work principles */}
             <div>
-              <h3 className={`text-2xl font-medium mb-8 ${
-                theme === Theme.DARK ? 'text-white' : 'text-black'
-              }`}>
+              <h3 className={`text-2xl font-medium mb-8`}>
                 How I work
               </h3>
               <div className="space-y-6">
                 {workPrinciples.map((principle, index) => (
                   <div key={index} className={`p-4 border transition-all duration-300 hover:scale-[1.02]
                     ${theme === Theme.DARK 
-                      ? 'border-white/10 hover:border-white/20 bg-black/20' 
-                      : 'border-black/10 hover:border-black/20 bg-white/20'
+                      ? 'border-white/10 hover:border-white/20' 
+                      : 'border-black/10 hover:border-black/20'
                     } backdrop-blur-xl`}>
                     <div className="flex items-start gap-3">
                       <CheckCircle size={20} className="text-orange-500 flex-shrink-0 mt-0.5" />
                       <div>
-                        <h4 className={`font-medium mb-1 ${
-                          theme === Theme.DARK ? 'text-white' : 'text-black'
-                        }`}>
+                        <h4 className={`font-medium mb-1`}>
                           {principle.title}
                         </h4>
-                        <p className={`text-sm font-light ${
-                          theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600'
-                        }`}>
+                        <p className={`text-sm font-light`}>
                           {principle.description}
                         </p>
                       </div>
@@ -225,9 +191,7 @@ export const UnifiedAboutContent: React.FC<UnifiedAboutContentProps> = ({ theme,
         <div className={`max-w-6xl mx-auto ${isVisible ? 'animate-fade-in-up' : 'opacity-0'}`}
              style={{ animationDelay: '0.2s' }}>
           <div className="text-center mb-16">
-            <h2 className={`text-4xl md:text-5xl lg:text-6xl font-light mb-6 tracking-tight ${
-              theme === Theme.DARK ? 'text-white' : 'text-black'
-            }`}>
+            <h2 className={`text-4xl md:text-5xl lg:text-6xl font-light mb-6 tracking-tight`}>
               Skills & projects
             </h2>
             <div className="w-16 h-px bg-orange-500 mx-auto" />
@@ -236,22 +200,18 @@ export const UnifiedAboutContent: React.FC<UnifiedAboutContentProps> = ({ theme,
           <div className="grid lg:grid-cols-2 gap-16">
             {/* Skills */}
             <div>
-              <h3 className={`text-2xl font-medium mb-8 ${
-                theme === Theme.DARK ? 'text-white' : 'text-black'
-              }`}>
+              <h3 className={`text-2xl font-medium mb-8`}>
                 Technical expertise
               </h3>
               <div className="grid gap-4">
                 {skills.map((skill, index) => (
                   <div key={index} className={`flex items-center gap-4 p-4 border transition-all duration-300 hover:scale-[1.02]
                     ${theme === Theme.DARK 
-                      ? 'border-white/10 hover:border-white/20 bg-black/20' 
-                      : 'border-black/10 hover:border-black/20 bg-white/20'
+                      ? 'border-white/10 hover:border-white/20' 
+                      : 'border-black/10 hover:border-black/20'
                     } backdrop-blur-xl`}>
                     <skill.icon size={20} className="text-orange-500" />
-                    <span className={`font-medium ${
-                      theme === Theme.DARK ? 'text-white' : 'text-black'
-                    }`}>
+                    <span className={`font-medium`}>
                       {skill.name}
                     </span>
                   </div>
@@ -261,17 +221,15 @@ export const UnifiedAboutContent: React.FC<UnifiedAboutContentProps> = ({ theme,
 
             {/* Projects */}
             <div>
-              <h3 className={`text-2xl font-medium mb-8 ${
-                theme === Theme.DARK ? 'text-white' : 'text-black'
-              }`}>
+              <h3 className={`text-2xl font-medium mb-8`}>
                 Real projects built
               </h3>
               <div className="space-y-6">
                 {projects.map((project, index) => (
                   <div key={index} className={`p-6 border transition-all duration-300 hover:scale-[1.02]
                     ${theme === Theme.DARK 
-                      ? 'border-white/10 hover:border-white/20 bg-black/20' 
-                      : 'border-black/10 hover:border-black/20 bg-white/20'
+                      ? 'border-white/10 hover:border-white/20' 
+                      : 'border-black/10 hover:border-black/20'
                     } backdrop-blur-xl`}>
                     <div className="flex items-start gap-4">
                       <div className={`p-3 rounded-xl ${
@@ -280,14 +238,10 @@ export const UnifiedAboutContent: React.FC<UnifiedAboutContentProps> = ({ theme,
                         <project.icon size={24} className="text-orange-500" />
                       </div>
                       <div>
-                        <h4 className={`font-medium mb-2 ${
-                          theme === Theme.DARK ? 'text-white' : 'text-black'
-                        }`}>
+                        <h4 className={`font-medium mb-2`}>
                           {project.name}
                         </h4>
-                        <p className={`text-sm font-light ${
-                          theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600'
-                        }`}>
+                        <p className={`text-sm font-light`}>
                           {project.description}
                         </p>
                       </div>
@@ -303,9 +257,7 @@ export const UnifiedAboutContent: React.FC<UnifiedAboutContentProps> = ({ theme,
         <div className={`max-w-6xl mx-auto ${isVisible ? 'animate-fade-in-up' : 'opacity-0'}`}
              style={{ animationDelay: '0.4s' }}>
           <div className="text-center mb-16">
-            <h2 className={`text-4xl md:text-5xl lg:text-6xl font-light mb-6 tracking-tight ${
-              theme === Theme.DARK ? 'text-white' : 'text-black'
-            }`}>
+            <h2 className={`text-4xl md:text-5xl lg:text-6xl font-light mb-6 tracking-tight`}>
               Timeline & capabilities
             </h2>
             <div className="w-16 h-px bg-orange-500 mx-auto" />
@@ -314,9 +266,7 @@ export const UnifiedAboutContent: React.FC<UnifiedAboutContentProps> = ({ theme,
           <div className="grid lg:grid-cols-2 gap-16">
             {/* Timeline */}
             <div>
-              <h3 className={`text-2xl font-medium mb-8 ${
-                theme === Theme.DARK ? 'text-white' : 'text-black'
-              }`}>
+              <h3 className={`text-2xl font-medium mb-8`}>
                 My journey
               </h3>
               <div className="space-y-6">
@@ -333,14 +283,10 @@ export const UnifiedAboutContent: React.FC<UnifiedAboutContentProps> = ({ theme,
                       )}
                     </div>
                     <div className="flex-1 pb-8">
-                      <h4 className={`font-medium mb-1 ${
-                        theme === Theme.DARK ? 'text-white' : 'text-black'
-                      }`}>
+                      <h4 className={`font-medium mb-1`}>
                         {event.title}
                       </h4>
-                      <p className={`text-sm font-light ${
-                        theme === Theme.DARK ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
+                      <p className={`text-sm font-light`}>
                         {event.description}
                       </p>
                     </div>
@@ -351,16 +297,12 @@ export const UnifiedAboutContent: React.FC<UnifiedAboutContentProps> = ({ theme,
 
             {/* Capabilities */}
             <div>
-              <h3 className={`text-2xl font-medium mb-8 ${
-                theme === Theme.DARK ? 'text-white' : 'text-black'
-              }`}>
+              <h3 className={`text-2xl font-medium mb-8`}>
                 AI capabilities
               </h3>
               
               {/* Filter */}
-              <div className={`inline-flex rounded-lg p-1 mb-6 ${
-                theme === Theme.DARK ? 'bg-gray-900' : 'bg-gray-100'
-              }`}>
+              <div className={`inline-flex rounded-lg p-1 mb-6`}>
                 {(['all', 'standard', 'experimental'] as const).map((filter) => (
                   <button 
                     key={filter}
@@ -382,16 +324,14 @@ export const UnifiedAboutContent: React.FC<UnifiedAboutContentProps> = ({ theme,
                 {filteredCapabilities.map((capability, index) => (
                   <div key={index} className={`flex items-center justify-between p-3 border transition-all duration-300
                     ${theme === Theme.DARK 
-                      ? 'border-white/10 hover:border-white/20 bg-black/20' 
-                      : 'border-black/10 hover:border-black/20 bg-white/20'
+                      ? 'border-white/10 hover:border-white/20' 
+                      : 'border-black/10 hover:border-black/20'
                     } backdrop-blur-xl`}>
                     <div className="flex items-center gap-3">
                       <div className={`w-1.5 h-1.5 rounded-full ${
                         capability.experimental ? 'bg-orange-500' : 'bg-green-500'
                       }`} />
-                      <span className={`text-sm font-medium ${
-                        theme === Theme.DARK ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
+                      <span className={`text-sm font-medium`}>
                         {capability.name}
                       </span>
                     </div>
@@ -411,9 +351,7 @@ export const UnifiedAboutContent: React.FC<UnifiedAboutContentProps> = ({ theme,
         <div className={`max-w-4xl mx-auto ${isVisible ? 'animate-fade-in-up' : 'opacity-0'}`}
              style={{ animationDelay: '0.6s' }}>
           <div className="text-center mb-16">
-            <h2 className={`text-4xl md:text-5xl lg:text-6xl font-light mb-6 tracking-tight ${
-              theme === Theme.DARK ? 'text-white' : 'text-black'
-            }`}>
+            <h2 className={`text-4xl md:text-5xl lg:text-6xl font-light mb-6 tracking-tight`}>
               Client feedback
             </h2>
             <div className="w-16 h-px bg-orange-500 mx-auto" />
@@ -423,28 +361,22 @@ export const UnifiedAboutContent: React.FC<UnifiedAboutContentProps> = ({ theme,
             {testimonials.map((testimonial, index) => (
               <div key={index} className={`p-6 border transition-all duration-300 hover:scale-[1.02]
                 ${theme === Theme.DARK 
-                  ? 'border-white/10 hover:border-white/20 bg-black/20' 
-                  : 'border-black/10 hover:border-black/20 bg-white/20'
+                  ? 'border-white/10 hover:border-white/20' 
+                  : 'border-black/10 hover:border-black/20'
                 } backdrop-blur-xl`}>
                 <div className="flex items-center gap-1 mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
                     <Star key={i} size={14} className="text-orange-500 fill-current" />
                   ))}
                 </div>
-                <blockquote className={`text-base font-light mb-4 ${
-                  theme === Theme.DARK ? 'text-gray-300' : 'text-gray-700'
-                }`}>
+                <blockquote className={`text-base font-light mb-4`}>
                   "{testimonial.content}"
                 </blockquote>
                 <div>
-                  <div className={`font-medium ${
-                    theme === Theme.DARK ? 'text-white' : 'text-black'
-                  }`}>
+                  <div className={`font-medium`}>
                     {testimonial.name}
                   </div>
-                  <div className={`text-sm ${
-                    theme === Theme.DARK ? 'text-gray-500' : 'text-gray-600'
-                  }`}>
+                  <div className={`text-sm`}>
                     {testimonial.role}
                   </div>
                 </div>
@@ -454,23 +386,6 @@ export const UnifiedAboutContent: React.FC<UnifiedAboutContentProps> = ({ theme,
         </div>
 
       </div>
-
-      <style jsx>{`
-        @keyframes fade-in-up {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in-up {
-          animation: fade-in-up 0.8s ease-out forwards;
-        }
-      `}</style>
     </section>
   );
 };

@@ -1,4 +1,6 @@
 import { useId } from "react";
+import * as React from "react";
+
 import { cn } from "../../lib/utils";
 
 interface GridPatternProps extends React.SVGProps<SVGSVGElement> {
@@ -9,7 +11,6 @@ interface GridPatternProps extends React.SVGProps<SVGSVGElement> {
   squares?: Array<[x: number, y: number]>;
   strokeDasharray?: string;
   className?: string;
-  theme?: 'light' | 'dark';
   [key: string]: unknown;
 }
 
@@ -21,22 +22,15 @@ export function GridPattern({
   strokeDasharray = "0",
   squares,
   className,
-  theme = 'light',
   ...props
 }: GridPatternProps) {
   const id = useId();
-
-  // Theme-aware colors
-  const strokeColor = theme === 'dark' 
-    ? 'stroke-white/10 fill-white/5' 
-    : 'stroke-gray-900/10 fill-gray-900/5';
 
   return (
     <svg
       aria-hidden="true"
       className={cn(
-        "pointer-events-none absolute inset-0 h-full w-full",
-        strokeColor,
+        "pointer-events-none absolute inset-0 h-full w-full fill-neutral-500/30 stroke-neutral-500/30",
         className,
       )}
       {...props}

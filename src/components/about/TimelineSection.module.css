@@ -1,0 +1,7 @@
+@keyframes drift-vertical {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-30px); }
+}
+.animate-drift-vertical {
+  animation: drift-vertical 10s ease-in-out infinite;
+} 

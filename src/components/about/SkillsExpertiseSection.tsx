@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Theme } from '../../../types';
+import { Theme } from '@/types';
 import { Layers, Bot, Database, GitFork, Zap, Code, Settings } from 'lucide-react'; 
 
 interface SkillsExpertiseSectionProps {
@@ -64,30 +63,19 @@ export const SkillsExpertiseSection: React.FC<SkillsExpertiseSectionProps> = ({ 
                 </div>
               </div>
               
+              {/* --- THIS IS THE FIX --- */}
               {/* Text */}
               <h3 className={`text-lg font-semibold leading-tight ${
                 theme === Theme.DARK ? 'text-white' : 'text-black'
               }`}>
                 {skill.name}
               </h3>
+              {/* --- END FIX --- */}
               
-              {/* Hover accent */}
-              <div className="absolute bottom-0 left-0 w-full h-1 bg-orange-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 rounded-b-2xl" />
             </div>
           ))}
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes drift {
-          0%, 100% { transform: translateX(0px) translateY(0px); }
-          33% { transform: translateX(20px) translateY(-10px); }
-          66% { transform: translateX(-10px) translateY(15px); }
-        }
-        .animate-drift {
-          animation: drift 12s ease-in-out infinite;
-        }
-      `}</style>
     </section>
   );
 };

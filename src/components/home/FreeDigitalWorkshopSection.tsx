@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Theme } from '../../../types';
+import { Theme } from '@/types';
 // Background pattern is now handled by Layout component
 import { ArrowRight, Clock, Users, Award } from 'lucide-react';
 
@@ -56,7 +55,7 @@ export const FreeDigitalWorkshopSection: React.FC<FreeDigitalWorkshopSectionProp
     <section 
       id="workshop-section"
       className={`relative py-24 lg:py-32 transition-all duration-700 overflow-hidden
-        ${theme === Theme.DARK ? 'bg-black' : 'bg-white'}`}
+        ${theme === Theme.DARK ? '' : ''}`}
     >
       {/* Background pattern is handled by Layout component */}
       <div className="container mx-auto px-6 relative z-10">
@@ -84,8 +83,8 @@ export const FreeDigitalWorkshopSection: React.FC<FreeDigitalWorkshopSectionProp
                 key={index}
                 className={`text-center p-6 border transition-all duration-300
                   ${theme === Theme.DARK 
-                    ? 'border-white/10 bg-black/20' 
-                    : 'border-black/10 bg-white/20'
+                    ? 'border-white/10' 
+                    : 'border-black/10'
                   } backdrop-blur-xl`}
                 style={{ animationDelay: `${0.2 + detail.delay}s` }}
               >
@@ -151,23 +150,6 @@ export const FreeDigitalWorkshopSection: React.FC<FreeDigitalWorkshopSectionProp
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes fade-in-up {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in-up {
-          animation: fade-in-up 0.8s ease-out forwards;
-        }
-      `}</style>
     </section>
   );
 };

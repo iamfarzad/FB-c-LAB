@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { cn } from "@/lib/utils";
 
 interface FlickeringGridProps {
   className?: string;
@@ -12,19 +13,12 @@ interface FlickeringGridProps {
   blur?: number; // Blur amount in pixels
 }
 
-export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
-  className = '',
-  squareSize = 4,
-  gridGap = 6,
-  maxOpacity = 0.3,
-  flickerChance = 0.02, // Much slower flickering
-  width = 800,
-  height = 800,
-  theme = 'light',
-  blur = 0.5, // Default subtle blur
-}) => {
+export const FlickeringGrid = React.forwardRef<
+  HTMLDivElement,
+  FlickeringGridProps
+>(({ className, squareSize = 4, gridGap = 6, maxOpacity = 0.3, flickerChance = 0.02, width = 800, height = 800, theme = 'light', blur = 0.5 },) => {
+  const animationFrameRef = useRef<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationFrameRef = useRef<number>();
   const [isVisible, setIsVisible] = useState(false);
 
   // Define color palettes that invert based on theme
@@ -136,13 +130,12 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
   return (
     <canvas
       ref={canvasRef}
-      className={className}
+      className={cn(className, 'w-full h-full object-cover')}
       style={{
-        width: '100%',
-        height: '100%',
-        objectFit: 'cover',
         filter: blur > 0 ? `blur(${blur}px)` : 'none',
       }}
     />
   );
-};
+});
+
+FlickeringGrid.displayName = 'FlickeringGrid';

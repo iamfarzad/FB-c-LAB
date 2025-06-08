@@ -1,4 +1,3 @@
-
 # F.B/c AI Assistant & Portfolio Website
 
 This project is a comprehensive AI-powered portfolio website for Farzad Bayat (F.B/c), showcasing AI consulting services, workshops, and expertise. It features an integrated AI assistant powered by the Google Gemini API for interactive user engagement, lead capture, and demonstration of advanced AI capabilities. The frontend is built with React and TypeScript, emphasizing a modern UI/UX design.
@@ -78,6 +77,8 @@ The application leverages several Gemini models for its AI capabilities, primari
 *   **`assets/`**: Static assets.
 
 ## Setup and Running
+
+**Recent Stability Update (June 2025):** The project has undergone a significant configuration overhaul. The build system (Vite, PostCSS, Tailwind CSS v4) has been stabilized, and numerous dependency and pathing issues have been resolved. The setup described below reflects the current, stable state of the application.
 
 ### 1. API Key Configuration (Critical for Security)
 

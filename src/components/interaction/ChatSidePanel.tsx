@@ -1,23 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, FileText, Download, ChevronDown, ChevronRight, Loader2, MessageSquare, Clock, User, Bot, Settings as SettingsIcon } from 'lucide-react';
-import { Theme } from '../../../types';
-import { useLanguage } from '../../contexts/LanguageContext';
+import { X, FileText, Download, ChevronDown, ChevronRight, Loader2, MessageSquare, Clock, User, Bot } from 'lucide-react';
+import { Theme, ChatMessage } from '@/types';
 
 interface ChatSidePanelProps {
-  isOpen: boolean;
   theme: Theme;
   onClose: () => void;
-  chatHistory: any[];
+  chatHistory: ChatMessage[];
   onDownloadTranscript?: () => void;
   onSummarizeChat?: () => void;
   onGenerateFollowUpBrief?: () => void;
-  summaryData?: any;
+  summaryData?: { text: string };
   isLoading?: boolean;
+  summaryError?: string | null;
 }
 
 export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
-  isOpen,
   theme,
   onClose,
   chatHistory,
@@ -25,33 +23,30 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
   onSummarizeChat,
   onGenerateFollowUpBrief,
   summaryData,
-  isLoading = false
+  isLoading = false,
+  summaryError,
 }) => {
   const { t } = useTranslation();
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'summary' | 'analytics' | 'export' | 'settings'>('summary');
-  // Correctly use language, setLanguage, and supportedLanguages from context
-  const { language, setLanguage, supportedLanguages } = useLanguage();
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['summary']));
+  const [activeTab, setActiveTab] = useState<'summary' | 'analytics' | 'export'>('summary');
 
-  // Local map for displaying full language names
-  const languageNames: { [key: string]: string } = {
-    en: 'English',
-    es: 'Español',
-    fr: 'Français',
-    de: 'Deutsch',
-    ja: '日本語',
-    ko: '한국어',
-    zh: '中文 (简体)',
-    // Add other supported languages here
+  const handleDownloadSummary = () => {
+    if (!summaryData?.text) return;
+    const blob = new Blob([summaryData.text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'AI_Conversation_Summary.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const toggleSection = (sectionId: string) => {
     const newExpanded = new Set(expandedSections);
-    if (newExpanded.has(sectionId)) {
-      newExpanded.delete(sectionId);
-    } else {
-      newExpanded.add(sectionId);
-    }
+    if (newExpanded.has(sectionId)) newExpanded.delete(sectionId);
+    else newExpanded.add(sectionId);
     setExpandedSections(newExpanded);
   };
 
@@ -67,8 +62,7 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
   const tabs = [
     { id: 'summary', label: t('tab_summary'), icon: MessageSquare }, // Assuming 'tab_summary' etc. are in your JSON
     { id: 'analytics', label: t('tab_analytics'), icon: Clock },
-    { id: 'export', label: t('tab_export'), icon: Download },
-    { id: 'settings', label: t('chatSidePanel_settingsTab'), icon: SettingsIcon }
+    { id: 'export', label: t('tab_export'), icon: Download }
   ];
 
   return (
@@ -110,11 +104,15 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex space-x-1">
+        <div className="flex space-x-1" role="tablist" aria-label="Side panel tabs">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id as any)}
+              role="tab"
+              aria-selected={activeTab === id}
+              aria-controls={`tabpanel-${id}`}
+              id={`tab-${id}`}
               className={`
                 flex items-center space-x-1 px-2 py-1.5 rounded text-xs font-medium
                 transition-all duration-200 flex-1 justify-center
@@ -135,7 +133,7 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
       <div className="flex-1 overflow-y-auto">
         {/* Summary Tab */}
         {activeTab === 'summary' && (
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-4" role="tabpanel" id="tabpanel-summary" aria-labelledby="tab-summary">
             {/* Quick Actions */}
             <div className="space-y-2">
               <h4 className={`text-xs font-semibold uppercase tracking-wider ${mutedTextColor}`}>
@@ -160,7 +158,7 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
                     <MessageSquare size={14} className="text-orange-500" />
                   )}
                   <span className={`text-xs font-medium ${textColor}`}>
-                    Generate Summary
+                    {isLoading ? 'Generating...' : 'Generate Summary'}
                   </span>
                 </button>
 
@@ -182,18 +180,36 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
                     <Clock size={14} className="text-orange-500" />
                   )}
                   <span className={`text-xs font-medium ${textColor}`}>
-                    Follow-up Brief
+                    {isLoading ? 'Generating...' : 'Follow-up Brief'}
                   </span>
                 </button>
               </div>
             </div>
 
+            {/* Error Display */}
+            {summaryError && (
+              <div className="p-3 rounded-lg border border-red-500/50 bg-red-500/10 text-red-400 text-xs">
+                {summaryError}
+              </div>
+            )}
+
             {/* Summary Content */}
             {summaryData && (
               <div className="space-y-3">
-                <h4 className={`text-xs font-semibold uppercase tracking-wider ${mutedTextColor}`}>
-                  Summary Results
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className={`text-xs font-semibold uppercase tracking-wider ${mutedTextColor}`}>
+                    Summary Results
+                  </h4>
+                  {/* --- THIS IS THE NEW DOWNLOAD BUTTON --- */}
+                  <button 
+                    onClick={handleDownloadSummary}
+                    className="flex items-center space-x-1 text-xs text-orange-500 hover:underline"
+                    title="Download this summary"
+                  >
+                    <Download size={12} />
+                    <span>Download</span>
+                  </button>
+                </div>
                 {Object.entries(summaryData).map(([key, value]) => (
                   <div key={key} className={`border rounded-lg ${cardBg}`}>
                     <button
@@ -239,7 +255,7 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
 
         {/* Analytics Tab */}
         {activeTab === 'analytics' && (
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-4" role="tabpanel" id="tabpanel-analytics" aria-labelledby="tab-analytics">
             <div className="grid grid-cols-2 gap-2">
               <div className={`p-3 rounded-lg border ${cardBg}`}>
                 <div className="flex items-center space-x-1 mb-1">
@@ -294,7 +310,7 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
 
         {/* Export Tab */}
         {activeTab === 'export' && (
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-4" role="tabpanel" id="tabpanel-export" aria-labelledby="tab-export">
             <div className="space-y-2">
               <h4 className={`text-xs font-semibold uppercase tracking-wider ${mutedTextColor}`}>
                 Export Options
@@ -320,45 +336,7 @@ export const ChatSidePanel: React.FC<ChatSidePanelProps> = ({
           </div>
         )}
 
-        {/* Settings Tab */}
-        {activeTab === 'settings' && (
-          <div className="p-4 space-y-4">
-            <div className="space-y-2">
-              <h4 className={`text-xs font-semibold uppercase tracking-wider ${mutedTextColor} mb-2`}>
-                Language Settings
-              </h4>
 
-              {/* Single Language Selector */}
-              <div className={`p-3 rounded-lg border ${cardBg} space-y-1`}>
-                <label htmlFor="language-select" className={`block text-xs font-medium ${textColor}`}>
-                  {t('chatSidePanel_languageLabel')}
-                </label>
-                <select
-                  id="language-select"
-                  value={language} // Bind to the single 'language' state from context
-                  onChange={(e) => setLanguage(e.target.value)} // Call 'setLanguage' from context
-                  className={`
-                    w-full p-2 rounded-md border text-xs
-                    ${theme === Theme.DARK
-                      ? 'bg-gray-700 border-gray-600 text-white focus:ring-orange-500 focus:border-orange-500'
-                      : 'bg-white border-gray-300 text-black focus:ring-orange-500 focus:border-orange-500'
-                    }
-                  `}
-                >
-                  {/* Populate options from supportedLanguages (string array from context) */}
-                  {supportedLanguages.map(langCode => (
-                    <option key={langCode} value={langCode}>
-                      {languageNames[langCode] || langCode.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
-                <p className={`text-xs ${mutedTextColor} mt-1`}>
-                  Select your preferred language for interaction.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Footer */}
