@@ -7,6 +7,7 @@ import autoprefixer from 'autoprefixer'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: '/',
   plugins: [
     react(),
   ],
@@ -29,6 +30,11 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    strictPort: true,
+  },
+  preview: {
+    port: 4173,
+    strictPort: true,
   },
   build: {
     outDir: 'dist',
