@@ -1,10 +1,13 @@
 import { MessageSquare, Mail, Calendar, MapPin } from 'lucide-react';
 
+import { Theme } from '@/types';
+
 interface ContactPageProps {
   onToggleChat: (message?: string) => void;
+  theme?: Theme;
 }
 
-export const ContactPage: React.FC<ContactPageProps> = ({ onToggleChat }) => {
+export const ContactPage: React.FC<ContactPageProps> = ({ onToggleChat, theme = Theme.LIGHT }) => {
   const contactMethods = [
     {
       icon: MessageSquare,
