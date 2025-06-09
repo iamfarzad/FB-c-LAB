@@ -8,6 +8,7 @@ interface ContactPageProps {
 }
 
 export const ContactPage: React.FC<ContactPageProps> = ({ onToggleChat, theme = Theme.LIGHT }) => {
+  const themeClass = theme === Theme.DARK ? 'dark' : 'light';
   const contactMethods = [
     {
       icon: MessageSquare,
@@ -40,7 +41,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onToggleChat, theme = 
   ];
 
   return (
-    <div className="min-h-screen relative transition-colors duration-300">
+    <div className={`container mx-auto px-4 py-12 ${themeClass}`}>
       
       {/* Content */}
       <div className="relative z-10">

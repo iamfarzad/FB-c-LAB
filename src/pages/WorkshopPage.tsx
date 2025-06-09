@@ -10,7 +10,7 @@ interface WorkshopPageProps {
 
 export const WorkshopPage: React.FC<WorkshopPageProps> = ({ 
   theme = 'light', 
-  onToggleChat 
+  onToggleChat = () => {} // Provide a default empty function
 }) => {
   return (
     <div className={`min-h-screen relative transition-colors duration-300 ${theme}`}>
@@ -18,7 +18,7 @@ export const WorkshopPage: React.FC<WorkshopPageProps> = ({
 
       
       {/* Content */}
-      <div className="relative z-10">
+      <div className="relative z-10" onClick={() => onToggleChat('I have a question about the workshop')}>
         <WorkshopHeroSection />
         <WhatToExpectSection />
         <WhyItWorksSection />
