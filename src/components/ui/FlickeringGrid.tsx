@@ -16,7 +16,7 @@ interface FlickeringGridProps {
 export const FlickeringGrid = React.forwardRef<
   HTMLDivElement,
   FlickeringGridProps
->(({ className, squareSize = 4, gridGap = 6, maxOpacity = 0.3, flickerChance = 0.02, width = 800, height = 800, theme = 'light', blur = 0.5 },) => {
+>(({ className, squareSize = 4, gridGap = 6, maxOpacity = 0.3, flickerChance = 0.02, width = 800, height = 800, theme = 'light', blur = 0.5 }, ref) => {
   const animationFrameRef = useRef<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -128,13 +128,17 @@ export const FlickeringGrid = React.forwardRef<
   }, [isVisible, squareSize, gridGap, maxOpacity, flickerChance, width, height, currentPalette]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className={cn(className, 'w-full h-full object-cover')}
-      style={{
-        filter: blur > 0 ? `blur(${blur}px)` : 'none',
-      }}
-    />
+    <div ref={ref} className={cn("relative w-full h-full", className)}>
+      <canvas
+        ref={canvasRef}
+        width={width}
+        height={height}
+        className="w-full h-full"
+        style={{
+          filter: blur > 0 ? `blur(${blur}px)` : 'none',
+        }}
+      />
+    </div>
   );
 });
 

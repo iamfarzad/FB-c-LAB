@@ -25,6 +25,7 @@ import { ContactPage } from '@/pages/ContactPage';
 // Import the interaction panel
 import { UnifiedInteractionPanel } from '@/components/interaction/UnifiedInteractionPanel';
 import { AppBackground } from '@/components/AppBackground';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // --- THIS IS THE FIX: Correctly import from inside src using the '@/' alias ---
 import { INITIAL_AI_CHAT_MESSAGE } from '@/constants';
@@ -149,45 +150,80 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <BrowserRouter>
-      <div className="relative flex flex-col min-h-screen bg-background text-foreground font-sans">
-        <AppBackground />
-        <Header 
-          theme={resolvedTheme} 
-          onToggleTheme={toggleTheme} 
-          onToggleChat={handleToggleChat}
-          isChatOpen={isChatOpen}
-        />
-        <main className="flex-1">
-          <Routes>
-            <Route path="/" element={<HomePage theme={resolvedTheme} onToggleChat={handleOpenInteractionPanelWithMessage} />} />
-            <Route path="/about" element={<AboutPage theme={resolvedTheme} onToggleChat={handleOpenInteractionPanelWithMessage} />} />
-            <Route path="/services" element={<ServicesPage theme={resolvedTheme} onToggleChat={handleOpenInteractionPanelWithMessage} />} />
-            <Route path="/workshop" element={<WorkshopPage />} />
-            <Route path="/contact" element={<ContactPage onToggleChat={handleOpenInteractionPanelWithMessage} />} />
-            {/* <Route path="/fbc-internal/workshop-preview" element={<AdminWorkshopPage />} /> */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-        <Footer theme={resolvedTheme} />
-        
-        <UnifiedInteractionPanel
-          isOpen={isChatOpen}
-          onClose={() => setIsChatOpen(false)}
-          theme={resolvedTheme}
-          chatHistory={chatHistory}
-          onSendMessage={handleSendMessage}
-          isAiThinking={isAiThinking}
-        />
-
-        <div className="fixed bottom-4 right-4 flex items-center space-x-2 bg-white/10 dark:bg-black/20 backdrop-blur-sm border border-white/20 dark:border-gray-800 rounded-full px-4 py-2 shadow-lg">
-          <div className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_10px_2px_rgba(74,222,128,0.7)] animate-pulse"></div>
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Farzad AI online
-          </span>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <div className="relative flex flex-col min-h-screen bg-background text-foreground font-sans">
+          <AppBackground />
+          <ErrorBoundary>
+            <Header 
+              theme={resolvedTheme}
+              onToggleTheme={toggleTheme}
+              onToggleChat={handleToggleChat}
+              isChatOpen={isChatOpen}
+            />
+          </ErrorBoundary>
+          
+          <main className="flex-1">
+            <ErrorBoundary>
+              <Routes>
+                <Route path="/" element={
+                  <HomePage 
+                    theme={resolvedTheme} 
+                    onToggleChat={handleOpenInteractionPanelWithMessage} 
+                  />} 
+                />
+                <Route path="/about" element={
+                  <AboutPage 
+                    theme={resolvedTheme} 
+                    onToggleChat={handleOpenInteractionPanelWithMessage} 
+                  />} 
+                />
+                <Route path="/services" element={
+                  <ServicesPage 
+                    theme={resolvedTheme} 
+                    onToggleChat={handleOpenInteractionPanelWithMessage} 
+                  />} 
+                />
+                <Route path="/workshop" element={
+                  <WorkshopPage 
+                    theme={resolvedTheme}
+                    onToggleChat={handleOpenInteractionPanelWithMessage}
+                  />} 
+                />
+                <Route path="/contact" element={
+                  <ContactPage 
+                    onToggleChat={handleOpenInteractionPanelWithMessage} 
+                  />} 
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </ErrorBoundary>
+          </main>
+          
+          <ErrorBoundary>
+            <Footer theme={resolvedTheme} />
+          </ErrorBoundary>
+          
+          <ErrorBoundary>
+            <UnifiedInteractionPanel
+              isOpen={isChatOpen}
+              onClose={() => setIsChatOpen(false)}
+              theme={resolvedTheme}
+              chatHistory={chatHistory}
+              onSendMessage={handleSendMessage}
+              isAiThinking={isAiThinking}
+            />
+          </ErrorBoundary>
+          
+          <div className="fixed bottom-4 right-4 flex items-center space-x-2 bg-white/10 dark:bg-black/20 backdrop-blur-sm border border-white/20 dark:border-gray-800 rounded-full px-4 py-2 shadow-lg">
+            <div className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_10px_2px_rgba(74,222,128,0.7)] animate-pulse"></div>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Farzad AI online
+            </span>
+          </div>
         </div>
-      </div>
-    </BrowserRouter>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 };
 
