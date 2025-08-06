@@ -1,130 +1,334 @@
-# F.B/c AI Assistant & Portfolio Website
+# 🤖 AI Assistant Pro - Consolidated Architecture
 
-This project is a comprehensive AI-powered portfolio website for Farzad Bayat (F.B/c), showcasing AI consulting services, workshops, and expertise. It features an integrated AI assistant powered by the Google Gemini API for interactive user engagement, lead capture, and demonstration of advanced AI capabilities. The frontend is built with React and TypeScript, emphasizing a modern UI/UX design.
+A production-ready AI assistant platform with real-time voice capabilities, comprehensive lead management, and advanced AI tools.
 
-The AI assistant's core text, image, search, and multimodal (webcam/screen frame + text) interactions are designed to be routed through a **secure serverless backend proxy**, ensuring the primary Google Gemini API key is not exposed client-side.
+## 🏗️ Architecture Overview
 
-## Key Features
+This project implements a clean, scalable architecture with clear separation of concerns:
 
-*   **Interactive AI Assistant**:
-    *   Supports **Text**, **Webcam frame + Text**, and **Screen share frame + Text** interactions via a secure backend proxy.
-    *   Native Voice (Speech-to-Text & Text-to-Speech) interactions are possible via the `<gdm-live-audio>` component, but require careful API key management (see "API Key Configuration").
-    *   Handles complex conversational flows, including lead capture (name/email).
-    *   Provides information based on a simulated knowledge base and real-time web searches (proxied).
-    *   Can generate images and text content on request (proxied).
-*   **Dynamic User Interface**:
-    *   Theming: Light and Dark mode support.
-    *   Responsive Design: Adapts to various screen sizes.
-    *   Engaging Animations: Including a 3D orb in the hero section and a 3D voice visualizer.
-*   **Comprehensive Portfolio Content**:
-    *   Multi-page structure: Home, Services, About, Workshop, Contact.
-    *   Detailed sections showcasing expertise, services, project history, and client testimonials.
-*   **Advanced Chat Functionality**:
-    *   Fullscreen mode for an immersive chat experience.
-    *   Multimodal input: Webcam and screen capture (still frames) to send with text prompts.
-    *   Chat Side Panel: Tools for conversation summarization and follow-up brief generation.
-*   **Admin Workshop Preview Page**:
-    *   An internal page (`/fbc-internal/workshop-preview`) demonstrating various AI concepts with interactive elements, charts, and potentially direct Gemini API usage for educational purposes. API key handling for this specific page needs careful consideration if deployed publicly.
+- **Frontend**: Vite + React (deployed on Vercel)
+- **API Layer**: Dedicated API routes for each AI tool
+- **Real-time Streaming**: Standalone WebSocket server (deployed separately)
+- **Persistence**: Supabase for leads, conversations, and transcripts
+- **Email**: Resend integration for automated follow-ups
 
-## Technologies Used
+## 🚀 Features
 
-*   **Frontend**:
-    *   React 19 (with TypeScript)
-    *   Tailwind CSS (for utility-first styling)
-    *   Custom CSS (for theming, animations, and specific component styles)
-*   **Backend (Conceptual for API Key Security)**:
-    *   Serverless Functions (e.g., on Vercel, Netlify) to act as a proxy for Gemini API calls.
-*   **AI & Language Models**:
-    *   Google Gemini API (`@google/genai`)
-*   **Custom Elements**:
-    *   Lit (for `gdm-live-audio` Web Component)
-*   **Routing**:
-    *   React Router DOM v6
-*   **3D Graphics & Visualization**:
-    *   Three.js (for hero orb and voice visualizer)
-    *   Chart.js (for data visualization in the Admin Workshop page)
-*   **Icons**:
-    *   Lucide React
-*   **Module Loading (Development)**:
-    *   ES Modules with `importmap` (dependencies sourced via `esm.sh`). For production, a build tool like Vite is recommended.
+### Core AI Capabilities
+- ✅ **Text Generation**: Advanced conversation handling with Gemini 2.0
+- ✅ **Image Analysis**: Multi-modal image understanding and description
+- ✅ **Document Analysis**: PDF/text analysis with summaries and insights
+- ✅ **ROI Calculation**: Business-focused AI ROI analysis and recommendations
+- ✅ **Video-to-App**: Convert video descriptions into app specifications
+- ✅ **Grounded Search**: Contextual search with conversation history
+- ✅ **Translation**: Multi-language text translation
 
-## Core AI Functionalities (Powered by Google Gemini)
+### Real-time Features
+- ✅ **WebSocket Voice**: Real-time voice communication via standalone server
+- ✅ **Live Sessions**: Persistent sessions with conversation continuity
+- ✅ **Multi-modal Streaming**: Text, audio, and image processing in real-time
 
-The application leverages several Gemini models for its AI capabilities, primarily accessed via the secure backend proxy:
+### Business Features
+- ✅ **Lead Management**: Comprehensive lead tracking and qualification
+- ✅ **Conversation Analytics**: Detailed conversation analysis and reporting
+- ✅ **Email Automation**: Automated follow-ups with beautiful templates
+- ✅ **Cost Tracking**: Token usage and budget management
+- ✅ **Session Persistence**: Conversations saved and retrievable
 
-*   **Conversational AI**: `gemini-2.5-flash-preview-04-17` for chat sessions, supporting system instructions, context awareness, and tool use (Google Search).
-*   **Image Generation**: `imagen-3.0-generate-002` for creating images from text prompts.
-*   **Web Search & Grounding**: Provides search results with citations for up-to-date information.
-*   **Text Generation**: Used for various tasks including summarization, generating follow-up briefs, and general text creation.
-*   **Multimodal Input**: Capable of processing text prompts combined with images (from webcam/screen capture or file uploads if re-enabled).
-*   **Simulated Knowledge Base**: The AI uses a predefined knowledge base (`SIMULATED_KNOWLEDGE_BASE` in `constants.ts`) to answer specific questions about F.B/c.
-*   **Lead Capture Flow**: The AI is programmed with a specific conversational flow to request and process user's name and email.
-*   **Native Audio Interaction (Special Consideration)**: `gemini-2.5-flash-preview-native-audio-dialog` via `<gdm-live-audio>` for real-time voice. Secure API key handling for this feature is critical (see API Key Configuration).
+## 📦 Project Structure
 
-## Project Structure
+```
+├── src/                          # Frontend application
+│   ├── components/              # React components
+│   ├── hooks/                   # Custom React hooks
+│   │   └── useWebSocketVoice.ts # WebSocket voice hook
+│   ├── lib/                     # Core services
+│   │   ├── GeminiService.ts     # Unified AI service
+│   │   └── LeadManager.ts       # Lead/conversation management
+│   └── types/                   # TypeScript definitions
+│
+├── api/                         # API routes (Vercel functions)
+│   ├── routes/                  # Individual AI tool endpoints
+│   │   ├── roi-calculation.ts   # ROI analysis
+│   │   ├── analyze-document.ts  # Document analysis
+│   │   ├── analyze-image.ts     # Image analysis
+│   │   ├── video-to-app.ts      # Video app specifications
+│   │   ├── grounded-search.ts   # Contextual search
+│   │   └── send-lead-email.ts   # Email automation
+│   └── gemini-proxy.ts          # Legacy proxy (being phased out)
+│
+├── server/                      # WebSocket server (deploy separately)
+│   ├── live-server.ts          # Main WebSocket server
+│   └── package.json            # Server dependencies
+│
+└── src/lib/supabase/           # Database
+    └── schema.sql              # Database schema
+```
 
-*   `index.html`: Main HTML entry point.
-*   `index.tsx`: React application entry point.
-*   `App.tsx`: Root React component.
-*   `metadata.json`: Application metadata (permissions for microphone, camera).
-*   **`api/` (Conceptual for Deployment):** Directory for serverless functions (e.g., `gemini-proxy.ts`) that securely handle API calls.
-*   **`components/`**: Reusable UI components.
-    *   `interaction/`: Components for the AI chat panel, including input bar with webcam/screen share controls.
-    *   `liveaudio/`: Components for native voice interaction (`GdmLiveAudio.ts`, `NativeLiveAudioWrapper.tsx`, etc.).
-*   **`pages/`**: Top-level page components.
-*   **`services/geminiService.ts`**: **Client-side service** that makes `fetch` calls to the backend proxy endpoint (`/api/gemini-proxy`). It no longer initializes `GoogleGenAI` directly for these proxied calls.
-*   **`constants.ts`**, **`types.ts`**: Application-wide definitions.
-*   **`assets/`**: Static assets.
+## 🛠️ Setup & Installation
 
-## Setup and Running
+### 1. Prerequisites
+- Node.js 18+
+- Supabase account
+- Gemini API key
+- Resend API key
+- Deployment platform supporting WebSockets (Railway, Render, etc.)
 
-**Recent Stability Update (June 2025):** The project has undergone a significant configuration overhaul. The build system (Vite, PostCSS, Tailwind CSS v4) has been stabilized, and numerous dependency and pathing issues have been resolved. The setup described below reflects the current, stable state of the application.
+### 2. Environment Variables
 
-### 1. API Key Configuration (Critical for Security)
+#### Frontend/API (Vercel)
+```bash
+# Gemini AI
+GEMINI_API_KEY=your_gemini_api_key
 
-*   **Primary Gemini API Key (Secure Backend Proxy)**:
-    *   For most AI interactions (text, image generation, search, webcam/screen frames), the application is designed to use a **serverless backend proxy**.
-    *   Your main Google Gemini API key should be stored as a secure environment variable (e.g., `GEMINI_API_KEY_SERVER`) on your deployment platform (Vercel, Netlify, etc.) and accessed *only* by this serverless proxy function.
-    *   The `services/geminiService.ts` file in the frontend will then make `fetch` requests to this proxy endpoint (e.g., `/api/gemini-proxy`).
-    *   **This is the recommended and most secure method.**
-*   **Native Voice (`<gdm-live-audio>`) API Key**:
-    *   The `GdmLiveAudio.ts` component currently attempts to initialize `GoogleGenAI` directly using `process.env.API_KEY`.
-    *   **Option 1 (Most Secure for Voice):** Modify the application to use browser-based SpeechRecognition (STT) and SpeechSynthesis (TTS). The recognized text would be sent through the secure proxy, and the text response spoken by the browser. This avoids exposing any API key client-side for voice.
-    *   **Option 2 (Less Secure - Client-Side Key Exposure):** If using `GdmLiveAudio.ts` directly with an API key, you'll need a build step (e.g., Vite) to inject an environment variable (e.g., `VITE_GEMINI_API_KEY`) into the client-side bundle. **This `VITE_GEMINI_API_KEY` will be publicly visible in your website's JavaScript.** If you choose this path, it's highly recommended to use a separate, restricted API key with strict quotas specifically for this voice feature.
-*   **Admin Workshop Page (`AdminWorkshopPage.tsx`) API Key**:
-    *   This page might make direct calls to Gemini. If deployed, its API key handling needs similar consideration to `GdmLiveAudio.ts`. For educational/internal use, direct key usage might be acceptable if the page isn't publicly indexed or if it's behind auth.
+# Supabase
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
 
-### 2. Development Environment (Using `importmap`)
+# Email
+RESEND_API_KEY=your_resend_api_key
+FROM_EMAIL=your_sender_email
 
-*   The project uses `index.html` with `importmap` and ES modules loaded directly from `esm.sh`. This is suitable for local development.
-*   Serve the project files using any static file server.
-*   Access `index.html` in your browser.
-*   For features relying on `process.env.API_KEY` directly (like `GdmLiveAudio.ts` or `AdminWorkshopPage.tsx` in their current form during development), you might need to manually replace `process.env.API_KEY` in the code with your key for testing, or use a development server that can inject environment variables (though `importmap` setups don't usually have complex build/dev servers by default).
+# WebSocket Server
+NEXT_PUBLIC_LIVE_SERVER_URL=wss://your-websocket-server.com/live
+```
 
-### 3. Production Deployment (Recommended)
+#### WebSocket Server
+```bash
+# Gemini AI
+GEMINI_API_KEY=your_gemini_api_key
 
-1.  **Implement a Serverless Proxy**:
-    *   Create a serverless function (e.g., `api/gemini-proxy.ts`) that takes requests from your frontend, adds your secure `GEMINI_API_KEY_SERVER`, calls the Google Gemini API, and returns the response.
-2.  **Transition to a Build Tool**:
-    *   Use a build tool like **Vite** or Create React App.
-    *   This will bundle your code, manage dependencies via `package.json`, and handle environment variables for the build.
-    *   Remove the `importmap` from `index.html` and load the bundled JavaScript.
-3.  **Deploy to a Platform with Serverless Support**:
-    *   Deploy your application to a platform like **Vercel** or **Netlify**.
-    *   These platforms offer:
-        *   Static site hosting for your React app.
-        *   Serverless function hosting for your API proxy.
-        *   Secure environment variable management.
-        *   Automatic HTTPS.
-        *   CI/CD integration.
+# Server
+PORT=8080
+```
 
-## Styling
+### 3. Database Setup
 
-*   **Tailwind CSS**: Loaded via CDN in `index.html` for development. In a production build (with Vite), Tailwind would be integrated into the build process for optimized CSS.
-*   **Custom CSS**: Global styles, CSS variables for theming, and animations are in `index.html`.
+1. Create a new Supabase project
+2. Run the schema from `src/lib/supabase/schema.sql` in the SQL editor
+3. Set up the required stored procedures:
 
-## Custom Elements
+```sql
+-- Add this function to Supabase
+CREATE OR REPLACE FUNCTION update_conversation_stats(
+  p_conversation_id UUID,
+  p_additional_cost DECIMAL
+) RETURNS VOID AS $$
+BEGIN
+  UPDATE conversations 
+  SET 
+    total_messages = total_messages + 1,
+    ai_cost = ai_cost + p_additional_cost
+  WHERE id = p_conversation_id;
+END;
+$$ LANGUAGE plpgsql;
+```
 
-*   **`<gdm-live-audio>`**: Lit-based component for native Gemini voice. API key security is paramount (see above).
+### 4. Installation
 
-This updated README provides a more accurate picture of the project's architecture, security considerations, and recommended deployment practices.
+```bash
+# Install frontend dependencies
+npm install
+
+# Install WebSocket server dependencies
+cd server
+npm install
+cd ..
+```
+
+### 5. Development
+
+```bash
+# Start frontend (Vite dev server)
+npm run dev
+
+# Start WebSocket server (in separate terminal)
+cd server
+npm run dev
+```
+
+## 🚀 Deployment
+
+### Frontend + API (Vercel)
+1. Connect your repository to Vercel
+2. Set environment variables in Vercel dashboard
+3. Deploy automatically on push to main
+
+### WebSocket Server (Railway/Render/Fly.io)
+1. Create new service on your platform
+2. Set environment variables
+3. Deploy the `server/` directory
+4. Update `NEXT_PUBLIC_LIVE_SERVER_URL` with the WebSocket URL
+
+### Database (Supabase)
+1. Already hosted - just configure connection strings
+2. Run migrations from `src/lib/supabase/schema.sql`
+
+## 🔧 API Endpoints
+
+### AI Tools
+- `POST /api/routes/roi-calculation` - Generate ROI analysis
+- `POST /api/routes/analyze-document` - Analyze documents
+- `POST /api/routes/analyze-image` - Analyze images
+- `POST /api/routes/video-to-app` - Generate app specs
+- `POST /api/routes/grounded-search` - Contextual search
+
+### Business Operations
+- `POST /api/routes/send-lead-email` - Send automated emails
+
+### Legacy (being phased out)
+- `POST /api/gemini-proxy` - Legacy proxy endpoint
+
+## 🎯 Usage Examples
+
+### Using the GeminiService
+```typescript
+import { getGeminiService } from '@/lib/GeminiService';
+
+const gemini = getGeminiService(process.env.GEMINI_API_KEY);
+
+// Generate text
+const result = await gemini.generateText('Explain AI benefits');
+
+// Analyze image
+const analysis = await gemini.analyzeImage(base64Image, 'Describe this image');
+
+// Generate ROI report
+const report = await gemini.generateRoiReport({
+  description: 'E-commerce AI implementation',
+  budget: 50000,
+  timeline: '6 months',
+  goals: ['Increase sales', 'Improve customer service']
+});
+```
+
+### Using the WebSocket Voice Hook
+```typescript
+import { useWebSocketVoice } from '@/hooks/useWebSocketVoice';
+
+function VoiceChat() {
+  const {
+    isConnected,
+    isSessionActive,
+    connect,
+    startSession,
+    sendText,
+    sendAudio,
+    lastMessage
+  } = useWebSocketVoice({
+    onMessage: (message) => {
+      console.log('Received:', message);
+    }
+  });
+
+  const handleStartVoice = async () => {
+    await connect();
+    await startSession({ model: 'gemini-2.0-flash-exp' });
+  };
+
+  return (
+    <div>
+      <button onClick={handleStartVoice}>Start Voice Chat</button>
+      {lastMessage && <p>{lastMessage.text}</p>}
+    </div>
+  );
+}
+```
+
+### Managing Leads
+```typescript
+import { getLeadManager } from '@/lib/LeadManager';
+
+const leadManager = getLeadManager();
+
+// Create/get lead
+const lead = await leadManager.createLead({
+  email: 'user@example.com',
+  name: 'John Doe',
+  company: 'Acme Corp'
+});
+
+// Track conversation
+const conversation = await leadManager.createConversation({
+  lead_id: lead.id,
+  session_id: 'unique-session-id',
+  title: 'AI Consultation'
+});
+
+// Add messages
+await leadManager.addMessage({
+  conversation_id: conversation.id,
+  message_id: 'msg-1',
+  role: 'user',
+  content: 'Tell me about AI benefits',
+  token_count: 25,
+  cost: 0.0001
+});
+```
+
+## 💰 Cost Management
+
+The system includes comprehensive cost tracking:
+
+- **Token Estimation**: Automatic token counting for all requests
+- **Budget Limits**: Daily spending limits with automatic cutoffs
+- **Usage Analytics**: Detailed cost breakdowns per lead/conversation
+- **Caching**: Intelligent response caching to reduce API calls
+
+## 📊 Analytics & Reporting
+
+Track business metrics with built-in analytics:
+
+- Lead conversion rates
+- Conversation stages and progression
+- AI usage and costs
+- Email engagement metrics
+- Session duration and quality
+
+## 🔒 Security Features
+
+- Environment variable protection
+- API rate limiting
+- Input validation and sanitization
+- Secure WebSocket connections
+- Database row-level security (RLS) ready
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+1. **WebSocket Connection Failed**
+   - Check `NEXT_PUBLIC_LIVE_SERVER_URL` is correct
+   - Ensure WebSocket server is deployed and running
+   - Verify firewall/proxy settings allow WebSocket connections
+
+2. **Database Connection Issues**
+   - Verify Supabase credentials
+   - Check if schema has been applied
+   - Ensure RLS policies are configured correctly
+
+3. **Email Not Sending**
+   - Verify Resend API key
+   - Check FROM_EMAIL domain is verified
+   - Review email logs in Supabase
+
+4. **High AI Costs**
+   - Review daily budget limits in GeminiService
+   - Enable caching for repeated requests
+   - Monitor token usage in analytics
+
+## 🤝 Contributing
+
+1. Follow the established architecture patterns
+2. Add comprehensive error handling
+3. Include proper TypeScript types
+4. Update documentation for new features
+5. Test both frontend and WebSocket server integration
+
+## 📄 License
+
+MIT License - see LICENSE file for details.
+
+---
+
+**Built with ❤️ for production-scale AI applications**
