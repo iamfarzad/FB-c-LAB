@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { ChatMessage } from '../types';
+import { ChatMessage } from '@/types';
 
 // Types
 export interface Lead {

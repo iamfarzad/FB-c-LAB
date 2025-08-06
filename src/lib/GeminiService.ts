@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { ChatMessage, WebSource } from '../types';
+import { ChatMessage, WebSource } from '@/types';
 
 // Types
 interface TokenUsage {
