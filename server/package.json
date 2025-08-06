@@ -1,0 +1,32 @@
+{
+  "name": "live-websocket-server",
+  "version": "1.0.0",
+  "description": "Standalone WebSocket server for real-time AI streaming",
+  "main": "live-server.js",
+  "scripts": {
+    "start": "node live-server.js",
+    "dev": "tsx watch live-server.ts",
+    "build": "tsc live-server.ts --outDir dist",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.29",
+    "@types/ws": "^8.5.14",
+    "tsx": "^4.11.0",
+    "typescript": "~5.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "websocket",
+    "gemini",
+    "ai",
+    "streaming",
+    "realtime"
+  ]
+}
